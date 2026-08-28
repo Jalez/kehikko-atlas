@@ -6,7 +6,18 @@ import { Overview } from './components/overview.tsx'
 import { ProjectSection } from './components/project-section.tsx'
 import { Travel } from './components/travel.tsx'
 import { travelWords } from '../atlas/navigation.ts'
+import { isFramed } from './attach.ts'
 import { useAtlas } from './use-atlas.ts'
+
+/**
+ * Whether anything is framing this page, decided once.
+ *
+ * A window's parent does not change while a document is open — nothing
+ * reparents a browsing context — so this is a fact rather than state, and
+ * reading it once at module scope says so. A `useState` here would invite a
+ * reader to wonder what makes it change.
+ */
+const FRAMED = isFramed()
 
 /**
  * Atlas: what work exists, and how it is organised.
@@ -127,29 +138,49 @@ export function App() {
     */
     <div className="@container/page mx-auto w-full max-w-5xl">
       <div className="space-y-5 p-3 @sm/page:space-y-6 @sm/page:p-5">
-        <header className="space-y-1">
-          {/*
-            The type does not shrink with the pane, and that is a decision rather
-            than an omission. Every other thing on this page gives up space at 220
-            pixels — the padding, the bars, the third column — because none of them
-            is the thing being read. Type is, and a narrow pane is if anything the
-            place a reader is squinting hardest.
-          */}
-          <h1 className="text-xl font-semibold tracking-tight">Atlas</h1>
-          {/*
-            Kept at every width, including the one where the compact form opens
-            with a paragraph of its own. It was the obvious thing to stand down
-            under 300 pixels and it is the wrong one: this line is the only place
-            the page says what Atlas IS, and it has to be there on the five
-            screens where there is no map and no compact form either — the ones
-            where somebody is looking at a sentence about a host that did not
-            answer and needs to know what was asking.
-          */}
-          <p className="text-muted-foreground text-sm text-pretty">
-            What work exists, and how it is organised: the projects, and the epics inside each of
-            them.
-          </p>
-        </header>
+        {/*
+          The name and the description, and ONLY when nothing is framing this
+          page.
+
+          They used to be here at every width, and the argument for that was
+          that this is the only place the page says what Atlas is — including on
+          the screens where there is no map, where somebody is reading a
+          sentence about a host that did not answer and needs to know what was
+          asking. That argument was right and is now wrong, for a reason outside
+          this repository: the host prints the module's name on the pane header
+          and its manifest `summary` as a tooltip on that name.
+
+          Which covers the failure screens too, and that is the part worth
+          noticing. The host's header is built from the MANIFEST, read on its own
+          sweep, not from anything this page says — so it is there whether or not
+          this page ever speaks. A silent module still has its name and its
+          description on the pane around it.
+
+          So framed, this was the name twice and a fixed strip of prose across
+          the top of a pane that is often three hundred pixels tall, competing
+          with the thing somebody opened the module to look at.
+
+          Unframed it is still the only identity there is, so it stays there.
+          `isFramed()` is a fact about this document that cannot change while it
+          is open — nothing reparents a window — so it is read once rather than
+          watched.
+        */}
+        {FRAMED ? null : (
+          <header className="space-y-1">
+            {/*
+              The type does not shrink with the pane, and that is a decision
+              rather than an omission. Every other thing on this page gives up
+              space at 220 pixels — the padding, the bars, the third column —
+              because none of them is the thing being read. Type is, and a narrow
+              pane is if anything where a reader is squinting hardest.
+            */}
+            <h1 className="text-xl font-semibold tracking-tight">Atlas</h1>
+            <p className="text-muted-foreground text-sm text-pretty">
+              What work exists, and how it is organised: the projects, and the epics inside each of
+              them.
+            </p>
+          </header>
+        )}
 
         {situation.kind === 'mapped' && territory ? (
           <>
