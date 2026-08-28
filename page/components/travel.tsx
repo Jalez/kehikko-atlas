@@ -15,17 +15,33 @@ import { GOTO } from '../../atlas/methods.ts'
  */
 export function Travel({ canAsk, reason }: { canAsk: boolean; reason: string | null }) {
   if (canAsk) {
+    /*
+      Folded, where its sibling below is not, and the asymmetry is the point.
+      This branch explains something that WORKS: a reader presses a card or picks
+      an epic, the screen changes, and nothing needs explaining until they want
+      to know why the marker did not move with it. The other branch explains an
+      ABSENCE — nothing here opens, and there is no way to discover that except
+      by pressing something and watching nothing happen — so it stays open at
+      every width. An account of a working mechanism, always on, above the fold,
+      in a pane 220 pixels wide, is four screens of prose a reader has to scroll
+      past to reach the thing it is about.
+    */
     return (
-      <section className="text-muted-foreground space-y-3 text-xs leading-relaxed">
-        <h2 className="text-foreground text-sm font-semibold">What pressing a row does</h2>
-        <p className="text-pretty">
-          It asks the host, with <code className="font-mono">{GOTO}</code>, to show that epic — and
-          the host decides. It may move, it may decline, or it may say there is nothing by that
-          name; all three come back as a successful call with a different answer inside, and the
-          card says which. Nothing on this page marks an epic as open on its own: the marker moves
-          when <code className="font-mono">roadmap.context</code> says the reader moved, which is
-          the only source for where anybody actually is.
-        </p>
+      <section className="text-muted-foreground text-xs leading-relaxed">
+        <details className="group rounded-md border p-3">
+          <summary className="text-foreground flex min-h-9 cursor-pointer list-none items-start gap-2 py-1 text-xs font-medium select-none [&::-webkit-details-marker]:hidden">
+            <ChevronRight className="mt-0.5 size-3.5 shrink-0 transition-transform group-open:rotate-90" />
+            <span className="min-w-0">What opening an epic does</span>
+          </summary>
+          <p className="mt-3 text-pretty">
+            It asks the host, with <code className="font-mono">{GOTO}</code>, to show that epic — and
+            the host decides. It may move, it may decline, or it may say there is nothing by that
+            name; all three come back as a successful call with a different answer inside, and the
+            page says which. Nothing here marks an epic as open on its own: the marker moves when{' '}
+            <code className="font-mono">roadmap.context</code> says the reader moved, which is the
+            only source for where anybody actually is.
+          </p>
+        </details>
       </section>
     )
   }

@@ -26,6 +26,7 @@ const { describe, expect, test, beforeEach, afterEach } = await import('bun:test
 const { render, screen, cleanup, waitFor, act } = await import('@testing-library/react')
 const { App } = await import('../page/app.tsx')
 const { words } = await import('../atlas/situation.ts')
+const { UNDESCRIBED_PROJECT } = await import('../atlas/chooser.ts')
 const { MESSAGE, PROTOCOL } = await import('roadmap-module-protocol')
 
 /**
@@ -450,5 +451,178 @@ describe('what decides the layout is the pane, not the window', () => {
      * this is the assertion that keeps them apart.
      */
     expect(container!.className).not.toMatch(/@\w+\/page:/)
+  })
+})
+
+/**
+ * The two selects a pane under 300 pixels gets instead of a map.
+ *
+ * Whether they FIT is a claim about pixels and belongs in a browser; happy-dom
+ * answers zero to every measurement, and both trees are equally "visible" to it
+ * because nothing here applies a stylesheet. What is settleable without one is
+ * which tree exists, what is written on it, and — the thing this app is for —
+ * that compressing the layout has not compressed six different absences into
+ * one.
+ */
+describe('the compact form, in a pane too narrow for a map', () => {
+  const answer = {
+    epics: [
+      { slug: 'off-means-off', title: 'Off means off', project: 'Roadmap', steps: 9 },
+      { slug: 'the-lone-one', title: 'The lone one', project: 'Courier' },
+    ],
+  }
+
+  async function mappedPage(
+    context: { epic: string | null; project: string | null; theme: string } = hello.context,
+  ) {
+    const { sent, fromHost } = frameIt()
+    render(<App />)
+    fromHost({ ...hello, context })
+    await waitFor(() => expect(sent.some((m) => m.type === MESSAGE.REQUEST)).toBe(true))
+    fromHost({
+      type: MESSAGE.RESPONSE,
+      id: sent.find((m) => m.type === MESSAGE.REQUEST).id,
+      ok: true,
+      data: answer,
+    })
+    await waitFor(() => expect(screen.getByLabelText('Project')).toBeDefined())
+    return { sent, fromHost }
+  }
+
+  test('it is two selects, and the map is still drawn for the widths that can hold it', async () => {
+    await mappedPage()
+    expect(screen.getByLabelText('Epic')).toBeDefined()
+    /*
+     * Both trees are in the document and CSS hides one. The alternative —
+     * measuring the column in JavaScript and rendering one of them — would make
+     * the layout depend on a `ResizeObserver` having fired, which draws the
+     * wrong one on a frame's first paint.
+     */
+    expect(document.querySelector('nav[aria-label="Projects"]')).not.toBeNull()
+  })
+
+  test('what chooses between them is the column’s width, not the window’s', async () => {
+    await mappedPage()
+
+    /*
+     * A media query in a framed module is evaluated against the frame's
+     * viewport, which is the pane — nearly right, and wrong past a thousand
+     * pixels, where the pane keeps growing and this `max-w-5xl` column does not.
+     * The same argument as the grid's columns, and the same kind of assertion,
+     * because happy-dom has no layout to compute a real one from.
+     */
+    const compact = screen.getByLabelText('Project').closest('[class*="@min-"]')
+    expect(compact).not.toBeNull()
+    expect(compact!.className).toContain('@min-[300px]/page:hidden')
+    expect(compact!.className).not.toMatch(/(^|\s)(sm|md|lg|xl):/)
+
+    const wide = document.querySelector('nav[aria-label="Projects"]')!.closest('[class~="hidden"]')
+    expect(wide).not.toBeNull()
+    expect(wide!.className).toContain('@min-[300px]/page:block')
+  })
+
+  test('nothing is chosen in the epic select on arrival', async () => {
+    await mappedPage()
+    /*
+     * Choosing an epic asks the host to MOVE, so a select that arrived with a
+     * value in it would either move somebody on load or draw an epic they are
+     * not looking at as though they were.
+     */
+    expect(screen.getByLabelText('Epic').textContent).toContain('None chosen')
+  })
+
+  test('except the epic the host itself reports as open', async () => {
+    await mappedPage({ epic: 'the-lone-one', project: 'Courier', theme: 'light' })
+    expect(screen.getByLabelText('Epic').textContent).toContain('The lone one')
+  })
+
+  test('every absence keeps its own sentence, and no select is offered for any of them', async () => {
+    /*
+     * Asserted over all six screens at once rather than one test per screen,
+     * because the failure this guards against is not "one of them is wrong", it
+     * is "two of them became the same" — and that is only visible by comparing
+     * them. A compact layout is exactly where two sentences get collapsed into
+     * one to save a line.
+     */
+    const reached: Record<string, string> = {}
+
+    const respondWith = (id: string, message: Record<string, unknown>) => {
+      act(() => {
+        window.dispatchEvent(
+          new MessageEvent('message', {
+            data: { type: MESSAGE.RESPONSE, id, ...message },
+            source: window.parent as never,
+          }),
+        )
+      })
+    }
+
+    const asked = async () => {
+      const { sent, fromHost } = frameIt()
+      render(<App />)
+      fromHost(hello)
+      await waitFor(() => expect(sent.some((m) => m.type === MESSAGE.REQUEST)).toBe(true))
+      return sent.find((m) => m.type === MESSAGE.REQUEST).id
+    }
+
+    const settle = async (name: string, headline: string) => {
+      await waitFor(() => expect(screen.getByText(headline)).toBeDefined())
+      reached[name] = document.body.textContent ?? ''
+      expect(screen.queryByLabelText('Epic')).toBeNull()
+      expect(screen.queryByLabelText('Project')).toBeNull()
+      cleanup()
+    }
+
+    unframe()
+    render(<App />)
+    await settle('unframed', words({ kind: 'unframed' }).headline)
+
+    frameIt()
+    render(<App />)
+    await settle('ungreeted', words({ kind: 'ungreeted' }).headline)
+
+    await asked()
+    await settle('asked', words({ kind: 'asked' }).headline)
+
+    respondWith(await asked(), { ok: false, reason: 'failed', error: 'the store is not open' })
+    await settle('refused', words({ kind: 'refused', reason: 'failed', error: '' }).headline)
+
+    respondWith(await asked(), { ok: true, data: { total: 12 } })
+    /*
+     * The reading is not read by these words — the sentence is about the shape
+     * of the conversation, not about what came back — so an empty one is enough
+     * to reach the string, and constructing a real `Reading` here would only be
+     * this test asserting `reading.ts` a second time.
+     */
+    await settle(
+      'unreadable',
+      words({
+        kind: 'unreadable',
+        reading: { shape: 'unrecognised', under: null, offered: 0, epics: [], skipped: [] },
+      }).headline,
+    )
+
+    respondWith(await asked(), { ok: true, data: { epics: [] } })
+    await settle('none', words({ kind: 'none' }).headline)
+
+    const texts = Object.values(reached)
+    expect(texts.length).toBe(6)
+    expect(new Set(texts).size).toBe(6)
+  })
+
+  test('a project the host named and described no epics for is not the "no epics" screen', async () => {
+    await mappedPage({ epic: null, project: 'A Project Nothing Describes', theme: 'light' })
+
+    /*
+     * The compact form opens on that project, because the host says the reader
+     * is standing in it — so this is the screen a reader actually gets, and it
+     * has to say which absence it is. `getAllByText`, because the wide tree
+     * draws the same sentence in its own section, which is the whole point of
+     * the two of them sharing one string.
+     */
+    expect(screen.getAllByText(UNDESCRIBED_PROJECT.body).length).toBeGreaterThan(0)
+    expect(document.body.textContent).not.toContain('The host answered: it has no epics yet.')
+    // And there is no epic select where there are no epics, disabled or otherwise.
+    expect(screen.queryByLabelText('Epic')).toBeNull()
   })
 })

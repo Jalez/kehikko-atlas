@@ -1,5 +1,6 @@
 import { Separator } from '@/components/ui/separator'
 import { Absence } from './components/absence.tsx'
+import { Chooser } from './components/chooser.tsx'
 import { Diagnostics } from './components/diagnostics.tsx'
 import { Overview } from './components/overview.tsx'
 import { ProjectSection } from './components/project-section.tsx'
@@ -10,20 +11,43 @@ import { useAtlas } from './use-atlas.ts'
 /**
  * Atlas: what work exists, and how it is organised.
  *
- * ## One layout, three widths
+ * ## One layout that reflows, and — under 300 pixels — a different answer
  *
- * There is no narrow build and no wide build. The page is a single column with a
- * maximum width, and the only thing that changes between a 220-pixel pane, a
+ * From 300 pixels up there is no narrow build and no wide build. The page is a
+ * single column with a maximum width, and the only thing that changes between a
  * sidebar and a full laptop window is how many epic cards sit in a row — one,
- * two, or three. Everything else, including the overview at the top, is the same
- * arrangement at every size.
+ * two, or three. That is worth doing on purpose: a module is framed in a column
+ * whose width it does not choose and cannot predict, so a layout with two modes
+ * has two modes the host can switch between by dragging a divider, and a reader
+ * watching the page rearrange itself under their hands is a reader who has lost
+ * their place. One arrangement that reflows is the one that survives being
+ * embedded.
  *
- * That is worth doing on purpose rather than by default. A module is framed in a
- * column whose width the module does not choose and cannot predict, so a layout
- * with two genuinely different modes has two modes the host can switch between by
- * dragging a divider, and a reader watching the page rearrange itself under their
- * hands is a reader who has lost their place. One arrangement that reflows is the
- * one that survives being embedded.
+ * Below 300 pixels that argument runs out, and the honest thing is to say so
+ * rather than to keep reflowing something that has stopped working. A card is a
+ * comparison device — it earns its title, lede and slug from being read against
+ * its neighbours — and at 220 pixels there are no neighbours: one card to a row,
+ * four in a 600-pixel pane, fifteen screens for one answer. Measured at that
+ * width the lede runs 32 characters to the line, two thirds of the slugs are
+ * shortened to an ellipsis, and the project headings stack onto two lines. So
+ * under 300 the map is replaced by `Chooser`, which is two selects: a project,
+ * and an epic inside it. Not a smaller map — a different question, answered.
+ * The reasoning, and the measurements, are in `atlas/chooser.ts`.
+ *
+ * 300 rather than a round number, and rather than the 448 at which the grid
+ * gains its second column, because 300 is where the measurements cross: at 295
+ * and up the project heading — name, count, "you are here" — fits on one line
+ * and the slugs stop being shortened; at 290 and below neither is true. Putting
+ * the threshold at the two-column mark instead would have replaced a perfectly
+ * good single-column map across the whole of 300 to 447.
+ *
+ * The switch is a container query like every other width decision here, so what
+ * chooses between a map and two selects is the width of THIS COLUMN, not the
+ * frame's viewport and not the window's. Both trees are in the document and one
+ * of them is `display: none`, which keeps it out of the accessibility tree and
+ * out of the tab order; the alternative — measuring the element in JavaScript
+ * and rendering one — would make the layout depend on a `ResizeObserver` having
+ * fired, and would draw the wrong one for a frame on first paint.
  *
  * ## Why the widths are asked of this element and not of the viewport
  *
@@ -112,6 +136,15 @@ export function App() {
             place a reader is squinting hardest.
           */}
           <h1 className="text-xl font-semibold tracking-tight">Atlas</h1>
+          {/*
+            Kept at every width, including the one where the compact form opens
+            with a paragraph of its own. It was the obvious thing to stand down
+            under 300 pixels and it is the wrong one: this line is the only place
+            the page says what Atlas IS, and it has to be there on the five
+            screens where there is no map and no compact form either — the ones
+            where somebody is looking at a sentence about a host that did not
+            answer and needs to know what was asking.
+          */}
           <p className="text-muted-foreground text-sm text-pretty">
             What work exists, and how it is organised: the projects, and the epics inside each of
             them.
@@ -120,26 +153,43 @@ export function App() {
 
         {situation.kind === 'mapped' && territory ? (
           <>
-            <p className="text-muted-foreground text-xs">
-              {territory.epics} {territory.epics === 1 ? 'epic' : 'epics'} across{' '}
-              {territory.projects.length}{' '}
-              {territory.projects.length === 1 ? 'project' : 'projects'}, as the host describes them.
-            </p>
+            {/*
+              Two selects, under 300 pixels of column. See the essay above and
+              `atlas/chooser.ts`; the short of it is that this is not the map
+              with things taken out, it is the other thing a map is for.
+            */}
+            <div className="@min-[300px]/page:hidden">
+              <Chooser
+                territory={territory}
+                travelTo={travelTo}
+                lastTravel={lastTravel}
+                cannotTravelBecause={cannotTravelBecause}
+              />
+            </div>
 
-            <Overview territory={territory} anchorFor={anchorFor} />
+            <div className="hidden space-y-5 @min-[300px]/page:block @sm/page:space-y-6">
+              <p className="text-muted-foreground text-xs">
+                {territory.epics} {territory.epics === 1 ? 'epic' : 'epics'} across{' '}
+                {territory.projects.length}{' '}
+                {territory.projects.length === 1 ? 'project' : 'projects'}, as the host describes
+                them.
+              </p>
 
-            <div className="space-y-8">
-              {territory.projects.map((project, index) => (
-                <ProjectSection
-                  key={project.name ?? ' unfiled'}
-                  project={project}
-                  anchor={anchorFor(index)}
-                  here={project.name !== null && project.name === territory.here}
-                  reading={territory.reading}
-                  travelTo={travelTo}
-                  lastTravel={lastTravel}
-                />
-              ))}
+              <Overview territory={territory} anchorFor={anchorFor} />
+
+              <div className="space-y-8">
+                {territory.projects.map((project, index) => (
+                  <ProjectSection
+                    key={project.name ?? ' unfiled'}
+                    project={project}
+                    anchor={anchorFor(index)}
+                    here={project.name !== null && project.name === territory.here}
+                    reading={territory.reading}
+                    travelTo={travelTo}
+                    lastTravel={lastTravel}
+                  />
+                ))}
+              </div>
             </div>
 
             <Separator />

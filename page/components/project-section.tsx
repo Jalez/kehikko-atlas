@@ -4,6 +4,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import { cn } from '@/lib/utils'
+import { UNDESCRIBED_PROJECT } from '../../atlas/chooser.ts'
 import type { Project } from '../../atlas/grouping.ts'
 import type { Travel } from '../../atlas/navigation.ts'
 import { EpicCard } from './epic-card.tsx'
@@ -97,9 +98,12 @@ export function ProjectSection({
       */}
       {project.onlyFromContext ? (
         <p className="text-muted-foreground rounded-md border border-dashed p-3 text-xs leading-relaxed">
-          The host says the reader is in this project, and the answer it gave named no epics
-          belonging to it. That is not an empty project — it is a project this app has been told
-          about in one breath and not described in the other.
+          {/*
+            The sentence is imported rather than written here, because the
+            compact form draws this same fact and two hand-written accounts of
+            one thing drift. See `atlas/chooser.ts`.
+          */}
+          {UNDESCRIBED_PROJECT.body}
         </p>
       ) : null}
 
