@@ -79,6 +79,23 @@ export function useAtlas(): Atlas {
     if (!live) return
     setSituation({ kind: 'asked' })
     const answer = await live.ask(LIST_EPICS)
+    /*
+     * An answer to a question asked by a connection that is gone is dropped.
+     *
+     * `StrictMode` mounts, unmounts and mounts again on purpose, so the first
+     * mount opens a connection, asks for the epics and is thrown away with its
+     * question still outstanding. That question does not vanish: it either
+     * arrives or, ten seconds later, gives up — and either way it calls
+     * `setSituation`, which is the same setter the surviving mount is using.
+     *
+     * What that looked like was a page that loaded, drew thirteen epics
+     * correctly, and replaced them with "the host was asked and has not
+     * answered" exactly ten seconds later. A lie about a host that had answered
+     * twice, timed by a promise belonging to a component that no longer
+     * existed — and the host's own logs were clean throughout, which is the
+     * least helpful pair of symptoms available.
+     */
+    if (connection.current !== live) return
     if (!answer.ok) {
       setSituation(
         answer.reason === 'timed-out'
