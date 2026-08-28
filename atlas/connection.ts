@@ -196,10 +196,25 @@ export class Connection {
       /**
        * The context message is flat where the greeting nests one — an
        * inconsistency the protocol documents and keeps, because it is what both
-       * halves already speak. Rebuilt into the same shape here so that
-       * everything downstream of this class sees one context type and not two.
+       * halves already speak. Reshaped here so that everything downstream of
+       * this class sees one context type and not two.
+       *
+       * ## Everything except the envelope, rather than a list of fields
+       *
+       * This used to name the three fields it wanted, which is a bug that fails
+       * silently and gets worse with time. The protocol has since grown
+       * `selection`, `pinned` and `prompt`; each arrived on the wire, was
+       * visible in the message, and was dropped one line before anything could
+       * act on it. Journeys had precisely this and it took a wire trace to
+       * find, because there is nothing to see — no error, no warning, just a
+       * field that is never there.
+       *
+       * So the message is passed through with only the envelope removed. A
+       * field this app does not understand today reaches the code that might
+       * tomorrow, and the next addition to the protocol needs no change here.
        */
-      this.events.onContext?.({ epic: message.epic, project: message.project, theme: message.theme })
+      const { type: _envelope, protocol: _spoken, ...context } = message
+      this.events.onContext?.(context)
       return 'context'
     }
     case MESSAGE.RESPONSE: {

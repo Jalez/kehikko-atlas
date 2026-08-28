@@ -112,6 +112,19 @@ export const MANIFEST = manifestSchema.parse({
   name: 'Atlas',
   version: VERSION,
   summary: 'A map of the territory: which projects exist, and which epics are in each of them.',
+  /**
+   * What an agent should do about this module, given that it is here.
+   *
+   * Not the summary: that says what this IS, for a person deciding whether to
+   * place it. This says what its PRESENCE OBLIGES, and a host composes it into
+   * the prompt every agent on the canvas is handed — attributed to this module,
+   * because it is this module's claim rather than the host's.
+   */
+  guidance:
+    'The projects and epics that exist are all listed here, so whatever is open on this kehikko is ' +
+    'not the whole picture. If work seems to belong to a different epic than the one open, say so ' +
+    'rather than filing it where you happen to be standing. Opening an epic here moves the entire ' +
+    'canvas, so do it deliberately: every other module will follow you to it.',
   entry: '/app',
   health: '/healthz',
   modes: [{ id: 'atlas', label: 'Atlas', scope: 'epic' }],
