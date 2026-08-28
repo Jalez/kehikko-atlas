@@ -166,7 +166,13 @@ describe('against a host that answers', () => {
       data: answer,
     })
 
-    await waitFor(() => expect(screen.getByText('open')).toBeDefined())
+    /*
+     * Twice: once on the card and once on the compact form's row for the same
+     * epic. Both trees are in the document at once — CSS hides one — so a
+     * marker drawn on only one of them would be a marker that disappears when
+     * the host drags a divider.
+     */
+    await waitFor(() => expect(screen.getAllByText('open').length).toBe(2))
     expect(screen.getAllByText('you are here').length).toBe(1)
   })
 
@@ -455,21 +461,44 @@ describe('what decides the layout is the pane, not the window', () => {
 })
 
 /**
- * The two selects a pane under 300 pixels gets instead of a map.
+ * The drill-down a pane under 300 pixels gets instead of a map.
  *
- * Whether they FIT is a claim about pixels and belongs in a browser; happy-dom
+ * Whether it FITS is a claim about pixels and belongs in a browser; happy-dom
  * answers zero to every measurement, and both trees are equally "visible" to it
  * because nothing here applies a stylesheet. What is settleable without one is
- * which tree exists, what is written on it, and — the thing this app is for —
- * that compressing the layout has not compressed six different absences into
- * one.
+ * which tree exists, what is written on it, which screen of the two is drawn
+ * after a press, and — the thing this app is for — that compressing the layout
+ * has not compressed six different absences into one.
  */
 describe('the compact form, in a pane too narrow for a map', () => {
   const answer = {
     epics: [
-      { slug: 'off-means-off', title: 'Off means off', project: 'Roadmap', steps: 9 },
+      {
+        slug: 'off-means-off',
+        title: 'Off means off',
+        lede: 'A setting that is off stays off across every surface that reads it.',
+        project: 'Roadmap',
+        steps: 9,
+      },
       { slug: 'the-lone-one', title: 'The lone one', project: 'Courier' },
     ],
+  }
+
+  /**
+   * The compact tree, found by the container query that hides it.
+   *
+   * By that class rather than by a test id, because it is the same string the
+   * layout is decided by: a test that looked the tree up some other way would
+   * go on passing if the compact form were left drawn at every width.
+   */
+  const compact = () => document.querySelector('[class*="@min-[300px]/page:hidden"]')!
+  /** Every row on whichever of the two screens is drawn. */
+  const rows = () => [...compact().querySelectorAll('ul li button, ul li > div')]
+  const rowText = () => rows().map((row) => (row.textContent ?? '').trim())
+  const press = (text: string) => {
+    const row = rows().find((each) => (each.textContent ?? '').trim().startsWith(text))
+    expect(row).toBeDefined()
+    act(() => (row as HTMLElement).click())
   }
 
   async function mappedPage(
@@ -485,13 +514,13 @@ describe('the compact form, in a pane too narrow for a map', () => {
       ok: true,
       data: answer,
     })
-    await waitFor(() => expect(screen.getByLabelText('Project')).toBeDefined())
+    await waitFor(() => expect(compact()).not.toBeNull())
     return { sent, fromHost }
   }
 
-  test('it is two selects, and the map is still drawn for the widths that can hold it', async () => {
+  test('it is a drill-down, and the map is still drawn for the widths that can hold it', async () => {
     await mappedPage()
-    expect(screen.getByLabelText('Epic')).toBeDefined()
+    expect(compact().querySelector('nav[aria-label="breadcrumb"]')).not.toBeNull()
     /*
      * Both trees are in the document and CSS hides one. The alternative —
      * measuring the column in JavaScript and rendering one of them — would make
@@ -511,32 +540,140 @@ describe('the compact form, in a pane too narrow for a map', () => {
      * The same argument as the grid's columns, and the same kind of assertion,
      * because happy-dom has no layout to compute a real one from.
      */
-    const compact = screen.getByLabelText('Project').closest('[class*="@min-"]')
-    expect(compact).not.toBeNull()
-    expect(compact!.className).toContain('@min-[300px]/page:hidden')
-    expect(compact!.className).not.toMatch(/(^|\s)(sm|md|lg|xl):/)
+    expect(compact().className).toContain('@min-[300px]/page:hidden')
+    expect(compact().className).not.toMatch(/(^|\s)(sm|md|lg|xl):/)
 
     const wide = document.querySelector('nav[aria-label="Projects"]')!.closest('[class~="hidden"]')
     expect(wide).not.toBeNull()
     expect(wide!.className).toContain('@min-[300px]/page:block')
   })
 
-  test('nothing is chosen in the epic select on arrival', async () => {
+  test('the first screen is project names and counts, and carries nothing else', async () => {
     await mappedPage()
+
     /*
-     * Choosing an epic asks the host to MOVE, so a select that arrived with a
-     * value in it would either move somebody on load or draw an epic they are
-     * not looking at as though they were.
+     * The count sits against the name with no word between them, which is the
+     * assertion and not an accident of `textContent`: every row on this screen
+     * is a project and every number on it is a count of epics, so "6 epics"
+     * thirteen times is thirteen copies of a word that says nothing.
      */
-    expect(screen.getByLabelText('Epic').textContent).toContain('None chosen')
+    expect(rowText()).toEqual(['Roadmap1', 'Courier1'])
+    /*
+     * And none of what the wide map draws around a title. The host sent a lede
+     * and slugs; the compact tree is where they must not appear, because
+     * repeating the card's contents in a narrow pane is what made this a
+     * smaller map rather than a different question.
+     */
+    const said = compact().textContent ?? ''
+    expect(said).not.toContain('A setting that is off stays off')
+    expect(said).not.toContain('off-means-off')
+  })
+
+  test('pressing a project shows its epics, and the breadcrumb says which project', async () => {
+    await mappedPage()
+    press('Roadmap')
+
+    expect(rowText()).toEqual(['Off means off9'])
+    const trail = compact().querySelector('nav[aria-label="breadcrumb"]')!
+    expect((trail.textContent ?? '').replace(/\s+/g, ' ')).toContain('Home')
+    expect(trail.textContent).toContain('Roadmap')
+    // The epics of the project that was not pressed are not on this screen.
+    expect(compact().textContent).not.toContain('The lone one')
+  })
+
+  test('the back button returns to the projects, and so does the Home crumb', async () => {
+    await mappedPage()
+
+    press('Roadmap')
+    const back = [...compact().querySelectorAll('button')].find(
+      (button) => (button.textContent ?? '').trim() === 'Projects',
+    )
+    expect(back).toBeDefined()
+    act(() => back!.click())
+    expect(rowText()).toEqual(['Roadmap1', 'Courier1'])
+
+    /*
+     * And the crumb again, because the two are deliberately not one control —
+     * one is a location and the other is an action — and a redesign that
+     * quietly dropped either would leave this passing on the other.
+     */
+    press('Courier')
+    const home = compact().querySelector('nav[aria-label="breadcrumb"] button')
+    expect(home).not.toBeNull()
+    expect(home!.textContent).toBe('Home')
+    act(() => (home as HTMLElement).click())
+    expect(rowText()).toEqual(['Roadmap1', 'Courier1'])
+  })
+
+  test('nothing is marked on arrival', async () => {
+    await mappedPage()
+    press('Roadmap')
+    /*
+     * Choosing an epic asks the host to MOVE, so a row that arrived marked
+     * would be this page claiming somebody is somewhere they are not.
+     */
+    expect(compact().textContent).not.toContain('open')
   })
 
   test('except the epic the host itself reports as open', async () => {
     await mappedPage({ epic: 'the-lone-one', project: 'Courier', theme: 'light' })
-    expect(screen.getByLabelText('Epic').textContent).toContain('The lone one')
+    /*
+     * And the form opens inside that project rather than on the list, because
+     * the host said where the reader is standing and drilling in asks nobody
+     * anything.
+     */
+    const marked = rows().find((row) => (row.textContent ?? '').includes('The lone one'))
+    expect(marked).toBeDefined()
+    expect(marked!.textContent).toContain('open')
   })
 
-  test('every absence keeps its own sentence, and no select is offered for any of them', async () => {
+  test('pressing an epic asks the host to move, once, naming that epic', async () => {
+    const { sent } = await mappedPage()
+    press('Roadmap')
+    const before = sent.filter((m: any) => m.type === MESSAGE.REQUEST).length
+    press('Off means off')
+
+    await waitFor(() =>
+      expect(sent.filter((m: any) => m.type === MESSAGE.REQUEST).length).toBe(before + 1),
+    )
+    const move = sent.filter((m: any) => m.type === MESSAGE.REQUEST)[before]
+    expect(move.params).toEqual({ epic: 'off-means-off' })
+  })
+
+  test('a host with no such method leaves the rows unpressable and says why, in its words', async () => {
+    const { sent, fromHost } = await mappedPage()
+    press('Roadmap')
+
+    const said = () =>
+      [...compact().querySelectorAll('p')].map((p) => (p.textContent ?? '').trim())
+    expect(said()).toContain('Choosing one asks the host to show it.')
+
+    press('Off means off')
+    const move = sent.filter((m: any) => m.type === MESSAGE.REQUEST).at(-1)
+    fromHost({
+      type: MESSAGE.RESPONSE,
+      id: move.id,
+      ok: false,
+      reason: 'unknown-method',
+      error: 'this host has no view.goto and will not grow one while the page is open',
+    })
+
+    /*
+     * Two things at once, and they are one rule: the rows stop being buttons
+     * AND a sentence appears saying why. Either without the other is the
+     * failure this app is built to avoid — a dead control with no explanation,
+     * or an explanation of something that still looks pressable.
+     */
+    await waitFor(() =>
+      expect(said()).toContain(
+        'this host has no view.goto and will not grow one while the page is open',
+      ),
+    )
+    expect(compact().querySelectorAll('ul li button').length).toBe(0)
+    expect(rowText()).toEqual(['Off means off9'])
+  })
+
+  test('every absence keeps its own sentence, and no list is offered for any of them', async () => {
     /*
      * Asserted over all six screens at once rather than one test per screen,
      * because the failure this guards against is not "one of them is wrong", it
@@ -568,8 +705,8 @@ describe('the compact form, in a pane too narrow for a map', () => {
     const settle = async (name: string, headline: string) => {
       await waitFor(() => expect(screen.getByText(headline)).toBeDefined())
       reached[name] = document.body.textContent ?? ''
-      expect(screen.queryByLabelText('Epic')).toBeNull()
-      expect(screen.queryByLabelText('Project')).toBeNull()
+      expect(document.querySelector('nav[aria-label="breadcrumb"]')).toBeNull()
+      expect(compact()).toBeNull()
       cleanup()
     }
 
@@ -614,15 +751,15 @@ describe('the compact form, in a pane too narrow for a map', () => {
     await mappedPage({ epic: null, project: 'A Project Nothing Describes', theme: 'light' })
 
     /*
-     * The compact form opens on that project, because the host says the reader
-     * is standing in it — so this is the screen a reader actually gets, and it
-     * has to say which absence it is. `getAllByText`, because the wide tree
-     * draws the same sentence in its own section, which is the whole point of
-     * the two of them sharing one string.
+     * The drill-down opens inside that project, because the host says the
+     * reader is standing in it — so this is the screen a reader actually gets,
+     * and it has to say which absence it is. `getAllByText`, because the wide
+     * tree draws the same sentence in its own section, which is the whole point
+     * of the two of them sharing one string.
      */
     expect(screen.getAllByText(UNDESCRIBED_PROJECT.body).length).toBeGreaterThan(0)
     expect(document.body.textContent).not.toContain('The host answered: it has no epics yet.')
-    // And there is no epic select where there are no epics, disabled or otherwise.
-    expect(screen.queryByLabelText('Epic')).toBeNull()
+    // And no epic list where there are no epics, pressable or otherwise.
+    expect(compact().querySelectorAll('ul li').length).toBe(0)
   })
 })

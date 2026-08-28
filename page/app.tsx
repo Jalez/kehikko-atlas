@@ -41,9 +41,12 @@ const FRAMED = isFramed()
  * four in a 600-pixel pane, fifteen screens for one answer. Measured at that
  * width the lede runs 32 characters to the line, two thirds of the slugs are
  * shortened to an ellipsis, and the project headings stack onto two lines. So
- * under 300 the map is replaced by `Chooser`, which is two selects: a project,
- * and an epic inside it. Not a smaller map — a different question, answered.
- * The reasoning, and the measurements, are in `atlas/chooser.ts`.
+ * under 300 the map is replaced by `Chooser`, which is a drill-down: the
+ * projects, then the epics of the one you pick. Not a smaller map — a different
+ * question, answered. It was two selects first, and what a select hides is its
+ * list, so everything the list would have said had to be re-said in prose around
+ * it; the reasoning, the replacement and the measurements are all in
+ * `atlas/chooser.ts`.
  *
  * 300 rather than a round number, and rather than the 448 at which the grid
  * gains its second column, because 300 is where the measurements cross: at 295
@@ -53,7 +56,7 @@ const FRAMED = isFramed()
  * good single-column map across the whole of 300 to 447.
  *
  * The switch is a container query like every other width decision here, so what
- * chooses between a map and two selects is the width of THIS COLUMN, not the
+ * chooses between a map and a drill-down is the width of THIS COLUMN, not the
  * frame's viewport and not the window's. Both trees are in the document and one
  * of them is `display: none`, which keeps it out of the accessibility tree and
  * out of the tab order; the alternative — measuring the element in JavaScript
@@ -185,7 +188,7 @@ export function App() {
         {situation.kind === 'mapped' && territory ? (
           <>
             {/*
-              Two selects, under 300 pixels of column. See the essay above and
+              A drill-down, under 300 pixels of column. See the essay above and
               `atlas/chooser.ts`; the short of it is that this is not the map
               with things taken out, it is the other thing a map is for.
             */}
