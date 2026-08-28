@@ -69,7 +69,12 @@ describe('the greeting', () => {
     const heard: unknown[] = []
     connection.on({ onContext: (context) => heard.push(context) })
     connection.receive({ ...hello, context: { epic: 'x', project: 'P', theme: 'dark' } })
-    expect(heard).toEqual([{ epic: 'x', project: 'P', theme: 'dark' }])
+    /* The fields this app reads, rather than the whole object. The context
+       schema fills in defaults for everything the protocol has grown since —
+       `selection`, `pinned`, `prompt`, `kehikko` — and an exact match here
+       would fail on every additive change to a message this test is not about. */
+    expect(heard).toHaveLength(1)
+    expect(heard[0]).toMatchObject({ epic: 'x', project: 'P', theme: 'dark' })
   })
 })
 

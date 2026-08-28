@@ -1,5 +1,5 @@
 import { MANIFEST_KIND, METHODS, PROTOCOL, manifestSchema, own } from 'roadmap-module-protocol'
-import { GET_EPIC, GOTO, LIST_EPICS } from './atlas/methods.ts'
+import { GET_EPIC, GOTO, KEEP_STATE, LIST_EPICS } from './atlas/methods.ts'
 
 export const ID = 'roadmap.atlas'
 export const VERSION = '1.0.0'
@@ -92,6 +92,7 @@ const uses = [
     ...capabilityFor(LIST_EPICS),
     ...capabilityFor(GET_EPIC),
     ...(GOTO ? capabilityFor(GOTO) : []),
+    ...(KEEP_STATE ? capabilityFor(KEEP_STATE) : []),
   ]),
 ]
 

@@ -3,7 +3,9 @@ import type { ModuleContext } from 'roadmap-module-protocol'
 import type { Connection } from '../atlas/connection.ts'
 import { PATIENCE } from '../atlas/connection.ts'
 import { type Territory, intoProjects } from '../atlas/grouping.ts'
-import { GOTO, LIST_EPICS } from '../atlas/methods.ts'
+import type { Chosen } from '../atlas/chooser.ts'
+import { reading, writing } from '../atlas/keep.ts'
+import { GOTO, KEEP_STATE, LIST_EPICS } from '../atlas/methods.ts'
 import { type Travel, readTravel } from '../atlas/navigation.ts'
 import { readEpics } from '../atlas/reading.ts'
 import { type Situation, situationOf } from '../atlas/situation.ts'
@@ -45,6 +47,21 @@ export interface Atlas {
   travelTo: ((slug: string) => void) | null
   /** What became of the last attempt, and which epic it was about. */
   lastTravel: { slug: string; travel: Travel } | null
+  /**
+   * Where the reader was standing when they were last here.
+   *
+   * Three values, and the third is the reason this is not a `Chosen | null`.
+   * `undefined` means nothing was kept and the drill-down should not be
+   * touched; `null` means the reader really was at the unset position and that
+   * is what should be restored. See the essay in `atlas/keep.ts`.
+   */
+  remembered: Chosen | null | undefined
+  /**
+   * Ask the host to remember where the reader is now. Null when no host could
+   * keep it, in which case the page simply does not remember — there is no
+   * affordance on screen to go false, so nothing needs saying.
+   */
+  remember: ((chosen: Chosen | null) => void) | null
 }
 
 export function useAtlas(): Atlas {
@@ -63,6 +80,12 @@ export function useAtlas(): Atlas {
    * five identical refusals would reasonably conclude the app is broken.
    */
   const [cannotAsk, setCannotAsk] = useState(false)
+  /**
+   * Undefined until a greeting has been read, and undefined afterwards too when
+   * the host kept nothing. Both mean the same thing to the drill-down — do not
+   * touch it — which is why one value covers them.
+   */
+  const [remembered, setRemembered] = useState<Chosen | null | undefined>(undefined)
   const connection = useRef<Connection | null>(null)
 
   /**
@@ -111,7 +134,12 @@ export function useAtlas(): Atlas {
     if (!isFramed()) return
 
     const attached = attach({
-      onHello: () => {
+      onHello: (_context, _protocol, _session, kept) => {
+        /* Read before the epics are asked for, so the drill-down is already
+           seeded by the time there is a territory to draw with it. Nothing here
+           waits on the answer: `reading` is pure, never throws, and returns
+           undefined for anything it cannot vouch for. */
+        setRemembered(reading(kept))
         void askForEpics()
       },
       onContext: (next) => setContext(next),
@@ -200,6 +228,30 @@ export function useAtlas(): Atlas {
   }, [cannotAsk])
 
   /**
+   * Hand the place to the host to keep.
+   *
+   * Fire-and-forget, deliberately. There is nothing useful to do with a refusal
+   * — the reader has already navigated, the screen is already correct, and the
+   * only consequence of a failed save is that the next visit opens where the
+   * last successful save said. Surfacing that would be an error message about a
+   * convenience nobody was promised.
+   *
+   * The local state is NOT updated from here. `remembered` is what the host said
+   * on the greeting and stays that; where the reader is now is the drill-down's
+   * own state, and a second copy here would be a second answer going stale on
+   * its own schedule.
+   */
+  const remember = useMemo(() => {
+    if (!isFramed() || !KEEP_STATE) return null
+    const method = KEEP_STATE
+    return (chosen: Chosen | null) => {
+      const live = connection.current
+      if (!live) return
+      void live.ask(method, { state: writing(chosen) })
+    }
+  }, [])
+
+  /**
    * Whether asking the list question again is worth offering.
    *
    * Only where a second attempt could plausibly answer differently. A host that
@@ -217,5 +269,5 @@ export function useAtlas(): Atlas {
     return worthIt ? () => void askForEpics() : null
   }, [situation, askForEpics])
 
-  return { situation, context, territory, again, travelTo, lastTravel }
+  return { situation, context, territory, again, travelTo, lastTravel, remembered, remember }
 }

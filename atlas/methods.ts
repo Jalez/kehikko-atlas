@@ -76,3 +76,18 @@ export const GET_EPIC = required('reading one epic', ['epic.get', 'journey.get']
  * thinks is broken.
  */
 export const GOTO: string | null = resolve(['view.goto'])
+
+/**
+ * Ask the host to keep a little of this app's own state.
+ *
+ * Optional for the same reason `GOTO` is, and it fails the same way: null when
+ * the installed package does not name it, and the page simply stops remembering
+ * where the reader was standing. That is a degradation a reader can live with
+ * without being told — unlike a dead button, there is no affordance here to go
+ * false, because nothing on screen ever advertised that the place was kept.
+ *
+ * What it must NOT do is throw. `required()` is right for the list call, whose
+ * absence leaves this app with nothing to draw; it would be wrong here, where
+ * the absence costs one convenience.
+ */
+export const KEEP_STATE: string | null = resolve(['state.set'])

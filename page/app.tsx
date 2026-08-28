@@ -105,7 +105,8 @@ const FRAMED = isFramed()
  * they have read some of the map.
  */
 export function App() {
-  const { situation, context, territory, again, travelTo, lastTravel } = useAtlas()
+  const { situation, context, territory, again, travelTo, lastTravel, remembered, remember } =
+    useAtlas()
 
   /**
    * Why nothing is pressable, when nothing is.
@@ -198,6 +199,8 @@ export function App() {
                 travelTo={travelTo}
                 lastTravel={lastTravel}
                 cannotTravelBecause={cannotTravelBecause}
+                remembered={remembered}
+                remember={remember}
               />
             </div>
 

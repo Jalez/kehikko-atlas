@@ -93,8 +93,26 @@ export interface ConnectionOptions {
 }
 
 export interface ConnectionEvents {
-  /** The greeting arrived. Carries the context that rides along with it. */
-  onHello?: (context: ModuleContext, protocol: number, session: string) => void
+  /**
+   * The greeting arrived. Carries the context that rides along with it, and
+   * whatever the host is keeping for this module.
+   *
+   * The state is delivered HERE and nowhere else, because the greeting is the
+   * only message that carries it — there is no "state changed" message and
+   * there should not be, since the only thing that changes it is this app
+   * asking. A page that wanted it later would have to have kept it from here
+   * anyway.
+   *
+   * `null` when the host keeps nothing: a first run, a host that keeps nothing
+   * for anybody, or a host that has forgotten. All three are the same sentence
+   * to this app — draw the defaults — which is why they are one value.
+   */
+  onHello?: (
+    context: ModuleContext,
+    protocol: number,
+    session: string,
+    state: string | null,
+  ) => void
   /** The reader moved. Sent on every switch, and on the greeting via `onHello`. */
   onContext?: (context: ModuleContext) => void
 }
@@ -111,6 +129,8 @@ export type Received =
   | 'response'
   | 'response-unmatched'
   | 'goto'
+  /** A message this app understands and has nothing to do with. */
+  | 'ignored'
 
 export class Connection {
   private readonly moduleId: string
@@ -188,7 +208,7 @@ export class Connection {
        */
       this.greeted = true
       this.send({ type: MESSAGE.READY, id: this.moduleId, protocol: message.protocol })
-      this.events.onHello?.(message.context, message.protocol, message.session)
+      this.events.onHello?.(message.context, message.protocol, message.session, message.state)
       this.events.onContext?.(message.context)
       return 'hello'
     }
@@ -265,6 +285,25 @@ export class Connection {
         why: 'Atlas is a map of projects and their epics; it draws no references or steps for a goto to land on.',
       })
       return 'goto'
+    }
+    case MESSAGE.EVENT: {
+      /**
+       * Something happened in another module on this canvas.
+       *
+       * Ignored, and ignored deliberately rather than by omission. This app
+       * declares `extensions.consumes: []` — it consumes no format — so a
+       * conforming host will never deliver one here at all, and a branch that
+       * did something would be acting on a message this app told the host it
+       * did not want.
+       *
+       * It is written out rather than left to a default because the switch is
+       * exhaustive over the host messages, and exhaustiveness is what made the
+       * ninth message show up here as a type error the moment the protocol grew
+       * it. That is the behaviour worth keeping: the next message the protocol
+       * adds should stop this file compiling and make somebody decide, rather
+       * than falling into a silent default that swallows it.
+       */
+      return 'ignored'
     }
     }
   }

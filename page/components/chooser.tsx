@@ -1,4 +1,4 @@
-import { type ReactNode, useState } from 'react'
+import { type ReactNode, useEffect, useState } from 'react'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import {
@@ -78,6 +78,8 @@ export function Chooser({
   travelTo,
   lastTravel,
   cannotTravelBecause,
+  remembered,
+  remember,
 }: {
   territory: Territory
   /** Ask the host to show an epic. Null when nothing could possibly answer. */
@@ -86,6 +88,10 @@ export function Chooser({
   lastTravel: { slug: string; travel: Travel } | null
   /** Why travel is impossible, when this app has been told a reason. */
   cannotTravelBecause: string | null
+  /** Where the reader was standing last time, if the host kept it. */
+  remembered: Chosen | null | undefined
+  /** Ask the host to keep where they are now. Null when nothing can keep it. */
+  remember: ((chosen: Chosen | null) => void) | null
 }) {
   /**
    * One piece of state for the whole form, and it is the reader's navigation
@@ -100,8 +106,44 @@ export function Chooser({
    * step with anything.
    */
   const [chosen, setChosen] = useState<Chosen | null>(null)
+  /**
+   * Whether the drill-down has been settled, either by the host's memory or by
+   * the reader's own hand.
+   *
+   * It exists because `chosen` has no value that means "not seeded yet" —
+   * `null` is already taken, and it means something specific (the reader has
+   * not navigated, so the host's standing decides). Without a second flag the
+   * restore below would either be unable to restore `null`, or would keep
+   * firing and stomp a reader who navigated before the greeting landed.
+   *
+   * Set by the reader's first press as well as by the restore, and that is the
+   * important half: a greeting can arrive late, and a remembered place arriving
+   * after somebody has already pressed Home would throw them back into the
+   * project they had just left — the same bug the fix was for, running the
+   * other way.
+   */
+  const [settled, setSettled] = useState(false)
+
+  useEffect(() => {
+    if (settled || remembered === undefined) return
+    setChosen(remembered)
+    setSettled(true)
+  }, [remembered, settled])
+
+  /**
+   * Every navigation in this component goes through here.
+   *
+   * One place, so that saving cannot be forgotten by a branch added later, and
+   * so the settled flag cannot drift from the state it guards.
+   */
+  const choose = (next: Chosen | null) => {
+    setChosen(next)
+    setSettled(true)
+    remember?.(next)
+  }
+
   const place = placeShown(territory, chosen)
-  const toProjects = () => setChosen({ at: 'projects' })
+  const toProjects = () => choose({ at: 'projects' })
 
   return (
     <div className="space-y-3">
@@ -174,7 +216,7 @@ export function Chooser({
         <ul className="space-y-1">
           {territory.projects.map((project) => (
             <li key={project.name ?? ' unfiled'}>
-              <Row onPress={() => setChosen({ at: 'epics', project: { name: project.name } })}>
+              <Row onPress={() => choose({ at: 'epics', project: { name: project.name } })}>
                 <span
                   className={cn(
                     'min-w-0 break-words',

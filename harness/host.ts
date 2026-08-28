@@ -120,6 +120,16 @@ window.addEventListener('message', (e) => {
       if (answer === 'unknown') return reply(m.id, false, { reason: 'unknown-method', error: 'this host does not answer ' + m.method })
       return reply(m.id, true, ANSWERS[answer]())
     }
+    if (m.method === 'state.set') {
+      /* Kept in sessionStorage rather than a variable, so that reloading this
+         harness page is the same gesture as reloading the canvas — which is the
+         only way to see whether the module actually remembers anything. A real
+         host keeps this in its own database, keyed by module, and never looks
+         inside the string. Neither does this. */
+      sessionStorage.setItem('atlas-state', m.params.state)
+      log('  host kept ' + m.params.state.length + ' bytes for the module')
+      return reply(m.id, true, {})
+    }
     if (m.method === 'view.goto') {
       const chosen = document.querySelector('input[name=nav]:checked').value
       if (chosen === 'unknown-method') {
@@ -135,15 +145,38 @@ window.addEventListener('message', (e) => {
 })
 
 function reply(id, ok, rest) {
-  frame.contentWindow.postMessage({ type: 'roadmap.response', id, ok, ...rest }, '*')
+  /*
+   * A successful answer carries its payload under a 'data' field; a refusal
+   * carries 'reason' and 'error' at the top level. This harness used to spread
+   * BOTH at the top level, which meant every successful answer it ever gave
+   * arrived with no data at all — the module read it as an answer it could not
+   * understand and drew the "could not read the answer" screen, for every shape,
+   * including the ones meant to be perfectly readable.
+   *
+   * It looked like the module being fussy. It was this function, and it is worth
+   * the comment because the harness is where somebody goes to decide whether the
+   * module or the host is at fault.
+   *
+   * No backticks in this comment, deliberately: it lives inside the page that is
+   * served as a template literal, and one would end the string.
+   */
+  const body = ok ? { data: rest } : rest
+  frame.contentWindow.postMessage({ type: 'roadmap.response', id, ok, ...body }, '*')
   log('  host → response', ok ? 'ok' : rest.reason)
 }
 function sendContext() {
   frame.contentWindow.postMessage({ type: 'roadmap.context', protocol: 2, ...context }, '*')
 }
 function greet() {
-  frame.contentWindow.postMessage({ type: 'roadmap.hello', protocol: 2, session: 'stub-1', context }, '*')
-  log('host → hello')
+  /* Handed back verbatim on every greeting, which is the whole of the protocol's
+     state mechanism. Null when nothing has been kept — a first run — because
+     that is the value the module has to be correct about too. */
+  const state = sessionStorage.getItem('atlas-state')
+  frame.contentWindow.postMessage(
+    { type: 'roadmap.hello', protocol: 2, session: 'stub-1', context, state },
+    '*',
+  )
+  log('host → hello' + (state ? ' (with ' + state.length + ' bytes kept)' : ' (keeping nothing)'))
 }
 
 frame.addEventListener('load', greet)
