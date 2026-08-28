@@ -291,3 +291,164 @@ describe('a project with fifteen epics does not swallow the page', () => {
     expect(screen.getByText('Small 1')).toBeDefined()
   })
 })
+
+/**
+ * The rules a 220-pixel pane imposes, checked where they can be checked.
+ *
+ * A layout is a claim about pixels, and most of the claims in one can only be
+ * settled by a browser: whether the page scrolls sideways, whether a summary is
+ * tall enough to press, whether two cards fit. Those belong in a Playwright
+ * probe against a real frame, and pretending otherwise here — asserting
+ * `getBoundingClientRect` in happy-dom, which answers zero to everything —
+ * would be the worst kind of test, one that passes because it measured nothing.
+ *
+ * What IS settleable without a browser is the rule underneath the layout, and it
+ * is the rule the rest of this app is built on: nothing a host said is dropped
+ * without a way back to it. A narrow pane forces exactly one new way to break
+ * that rule — shortening a string to make it fit — so what follows is about the
+ * shortening, written as an invariant over whatever the page happens to render
+ * rather than as a list of the places that shorten something today. The fourth
+ * such place, added next year, is covered by the same assertion.
+ */
+describe('in a pane too narrow for what the host said', () => {
+  /**
+   * Names and sentences longer than any pane holds, plus one word with no break
+   * opportunity in it anywhere — which is the case that turns a long lede into a
+   * page that scrolls sideways rather than into a lede that wraps.
+   */
+  /*
+   * Under `LIMITS.PROJECT` on purpose. A name longer than the protocol's bound
+   * is clipped by `reading.ts` before the page ever sees it, so an 86-character
+   * project name would be testing the reader's clipping rather than the
+   * layout's — and would fail here looking like a layout bug.
+   */
+  const PROJECT = 'A Project Whose Name Is Also Unreasonably Long And Quite Impossible To Fit'
+  const long = {
+    epics: [
+      {
+        slug: 'a-very-long-slug-that-goes-on-and-on-for-quite-a-while-indeed',
+        title:
+          'A deliberately enormous epic title that keeps going well past any reasonable column width',
+        lede: 'Averylongunbrokenwordthatcannotbehyphenatedanywhereatall and then ordinary prose.',
+        project: PROJECT,
+        steps: 12,
+      },
+      { slug: 'no-title-here-just-a-long-slug-to-be-going-on-with', project: PROJECT },
+    ],
+  }
+
+  async function mapped() {
+    const { sent, fromHost } = frameIt()
+    render(<App />)
+    fromHost(hello)
+    await waitFor(() => expect(sent.some((m) => m.type === MESSAGE.REQUEST)).toBe(true))
+    fromHost({
+      type: MESSAGE.RESPONSE,
+      id: sent.find((m) => m.type === MESSAGE.REQUEST).id,
+      ok: true,
+      data: long,
+    })
+    await waitFor(() => expect(screen.getAllByText(PROJECT).length).toBeGreaterThan(0))
+  }
+
+  test('every element that shortens a string carries the whole of it in a title', async () => {
+    await mapped()
+
+    const shortened = [...document.querySelectorAll('[class~="truncate"]')]
+    /*
+     * The count is asserted and not only the property. An invariant over an
+     * empty set is a test that passes by finding nothing, which is exactly how
+     * this would go quietly wrong the day the class is spelled differently.
+     */
+    expect(shortened.length).toBeGreaterThan(0)
+
+    for (const element of shortened) {
+      /*
+       * The `title` is looked for on the element or on any ancestor, because
+       * that is where the tooltip actually comes from: the overview puts it on
+       * the whole row rather than on the span, so that pointing anywhere along
+       * the row — at the bar, at the count — offers the name.
+       */
+      const titled = element.closest('[title]')
+      expect(titled).not.toBeNull()
+      expect(titled!.getAttribute('title')).toBe((element.textContent ?? '').trim())
+    }
+  })
+
+  test('an epic with no title never shortens the one name it has', async () => {
+    await mapped()
+
+    const only = screen.getByText('no-title-here-just-a-long-slug-to-be-going-on-with')
+    /*
+     * The slug IS the name when the host sent no title, so the treatment a slug
+     * gets underneath a title — shortened, with the whole of it on a tooltip —
+     * would leave an epic whose only name on screen is an ellipsis. It breaks
+     * instead, mid-word where it has to, because a slug is an identifier rather
+     * than prose and nothing is lost by breaking one anywhere.
+     */
+    expect(only.className).not.toContain('truncate')
+    expect(only.className).toContain('break-all')
+  })
+
+  test('a host sentence with no break in it is allowed to break', async () => {
+    await mapped()
+
+    expect(screen.getByText(/^Averylongunbrokenword/).className).toContain('break-words')
+    const title = screen.getByText(/^A deliberately enormous epic title/)
+    expect(title.className).toContain('break-words')
+    /*
+     * And `min-w-0` beside it, which is not decoration. This heading sits in a
+     * flex row, and a flex item's floor is its min-content width unless it is
+     * told otherwise — so `break-words` alone leaves the heading refusing to be
+     * narrower than its longest word, and the card, the section and the page
+     * widen to accommodate one epic.
+     */
+    expect(title.className).toContain('min-w-0')
+  })
+})
+
+describe('what decides the layout is the pane, not the window', () => {
+  test('the epic grid asks its container how wide it is', async () => {
+    const { sent, fromHost } = frameIt()
+    render(<App />)
+    fromHost(hello)
+    await waitFor(() => expect(sent.some((m) => m.type === MESSAGE.REQUEST)).toBe(true))
+    fromHost({
+      type: MESSAGE.RESPONSE,
+      id: sent.find((m) => m.type === MESSAGE.REQUEST).id,
+      ok: true,
+      data: { epics: [{ slug: 'one', title: 'One', project: 'Roadmap' }] },
+    })
+    await waitFor(() => expect(screen.getByText('One')).toBeDefined())
+
+    const grid = document.querySelector('section [class*="grid-cols-1"]')
+    expect(grid).not.toBeNull()
+    /*
+     * Container queries rather than `sm:` and `xl:`. A media query inside a
+     * framed module is evaluated against the frame's viewport, which is the pane
+     * — nearly right, and wrong past a thousand pixels, where the pane goes on
+     * growing and this `max-w-5xl` column does not. See the essay in `app.tsx`.
+     * Asserted against the class list because the alternative is asserting a
+     * computed column count, and happy-dom has no layout to compute one from.
+     */
+    expect(grid!.className).toContain('@md/page:grid-cols-2')
+    expect(grid!.className).toContain('@2xl/page:grid-cols-3')
+    expect(grid!.className).not.toMatch(/(^|\s)(sm|md|lg|xl):grid-cols/)
+  })
+
+  test('the container is named, and it is not the element carrying the padding', () => {
+    render(<App />)
+
+    const container = document.querySelector('[class~="@container/page"]')
+    expect(container).not.toBeNull()
+    /*
+     * An element cannot query itself: a `@sm/page:` written on the container
+     * resolves against the container's OWN nearest ancestor container, of which
+     * there is none, so the utility never applies — silently. That held the
+     * page's padding at its narrowest value at every width for as long as the
+     * ruler and the padded box were one element. Keeping them apart is the fix;
+     * this is the assertion that keeps them apart.
+     */
+    expect(container!.className).not.toMatch(/@\w+\/page:/)
+  })
+})

@@ -51,8 +51,24 @@ export function ProjectSection({
 
   return (
     <section id={anchor} className="scroll-mt-4">
+      {/*
+        The heading row wraps rather than shrinking. At 220 pixels a project name
+        of any length and two badges do not fit on one line, and the two ways out
+        are to wrap the badges under the name or to squeeze the name until it is
+        an ellipsis. The name is what the row is for and the badges are two short
+        constants, so the row wraps and the name keeps the whole first line.
+
+        `min-w-0` on the heading and `basis-full` on nothing: with the name free
+        to be narrow, a name that is one enormous word breaks inside itself
+        instead of setting a floor for the flex row.
+      */}
       <header className="mb-3 flex flex-wrap items-baseline gap-x-3 gap-y-1">
-        <h3 className={cn('text-base font-semibold', project.name === null && 'text-muted-foreground')}>
+        <h3
+          className={cn(
+            'min-w-0 text-base font-semibold break-words',
+            project.name === null && 'text-muted-foreground',
+          )}
+        >
           {/*
             A project with no name is not given one. "Uncategorised" and "Other"
             are both names for a project no host has, and inventing either would
@@ -87,8 +103,21 @@ export function ProjectSection({
         </p>
       ) : null}
 
+      {/*
+        The columns are asked of the page's container, not of the viewport. See
+        the essay in `app.tsx`; the short of it is that this grid is inside a
+        `max-w-5xl` column, so past a thousand pixels the pane keeps growing and
+        this grid does not, and a viewport breakpoint would add a third column on
+        the strength of space these cards never receive.
+
+        The thresholds are the width the CARDS need rather than round numbers. A
+        card holding a title, a lede and a slug stops being worth reading below
+        about 200 pixels, and the container is the column minus its own padding
+        and the gaps — so two columns need `@md` (448) and three need `@2xl`
+        (672), each of which leaves every card just over 200.
+      */}
       {project.epics.length > 0 ? (
-        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-3">
+        <div className="grid grid-cols-1 gap-2 @md/page:grid-cols-2 @2xl/page:grid-cols-3">
           {first.map((epic) => (
             <EpicCard
               key={epic.slug}
@@ -103,7 +132,7 @@ export function ProjectSection({
 
       {rest.length > 0 ? (
         <Collapsible open={open} onOpenChange={setOpen} className="mt-2">
-          <CollapsibleContent className="grid grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-3">
+          <CollapsibleContent className="grid grid-cols-1 gap-2 @md/page:grid-cols-2 @2xl/page:grid-cols-3">
             {rest.map((epic) => (
               <EpicCard
                 key={epic.slug}

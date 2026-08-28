@@ -44,13 +44,28 @@ export function EpicCard({
   const body = (
     <>
       <div className="flex items-start justify-between gap-2">
-        <h4 className="text-sm leading-snug font-medium text-pretty">
+        {/*
+          `min-w-0` and `break-words` together, and neither is enough alone. A
+          flex item's floor is `min-content` unless it is told otherwise, so a
+          title with one long word in it makes this heading refuse to be narrower
+          than that word, which pushes the card past the section, the section past
+          the column, and the column past the frame — at 220 pixels that is a page
+          the reader has to scroll sideways to see the right edge of every row on.
+          `min-w-0` lets the box get narrow; `break-words` lets the word do
+          something other than stick out of it.
+        */}
+        <h4 className="min-w-0 text-sm leading-snug font-medium break-words text-pretty">
           {/*
             The slug when there is no title. Never "Untitled": the host did not
             say "untitled", it said nothing, and the slug is the one name this
             app actually has for the thing.
+
+            `break-all` rather than `break-words` for this one. It is the only
+            name on the card, so it may not be clipped and may not be shortened;
+            and a slug is not prose, so there is nothing lost by breaking it
+            mid-word where a narrow pane needs it broken.
           */}
-          {epic.title ?? <span className="font-mono text-xs">{epic.slug}</span>}
+          {epic.title ?? <span className="font-mono text-xs break-all">{epic.slug}</span>}
         </h4>
         {open ? (
           <Badge variant="default" className="shrink-0">
@@ -60,13 +75,30 @@ export function EpicCard({
       </div>
 
       {epic.lede ? (
-        <p className="text-muted-foreground mt-1.5 text-xs leading-relaxed text-pretty">
+        <p className="text-muted-foreground mt-1.5 text-xs leading-relaxed break-words text-pretty">
           {epic.lede}
         </p>
       ) : null}
 
       <div className="text-muted-foreground/70 mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 font-mono text-[11px]">
-        {epic.title ? <span className="truncate">{epic.slug}</span> : null}
+        {/*
+          The slug under a title that already names the epic, so this is the one
+          string on the card that may be shortened — and it is shortened with a
+          `title` on it rather than clipped. The distinction the rest of this app
+          draws between "there is nothing" and "nothing has told me" has a smaller
+          cousin here: an ellipsis says there is more and where to get it, and a
+          slug that simply stops at the edge of its box says the host's slug ends
+          in the middle of a word.
+
+          `min-w-0` for the same reason as the heading: without it the truncation
+          never happens, because the box refuses to be narrower than the text it
+          was going to truncate.
+        */}
+        {epic.title ? (
+          <span className="min-w-0 truncate" title={epic.slug}>
+            {epic.slug}
+          </span>
+        ) : null}
         {/*
           Size is drawn only when the host said one. An epic whose size is
           unknown shows nothing here — not "0 steps", not "—", not "unknown".
@@ -87,7 +119,9 @@ export function EpicCard({
       {said ? (
         <p
           className={cn(
-            'mt-2 text-[11px] leading-relaxed text-pretty',
+            // A sentence the host wrote, so it may contain anything, including
+            // an epic slug long enough to be wider than a narrow pane.
+            'mt-2 text-[11px] leading-relaxed break-words text-pretty',
             travel?.outcome === 'no-such-target' ? 'text-destructive' : 'text-muted-foreground',
           )}
         >
@@ -97,8 +131,15 @@ export function EpicCard({
     </>
   )
 
+  /*
+   * `min-w-0` on the card itself, because this element is a grid item and a grid
+   * item's automatic minimum size is its min-content width. A card holding one
+   * unbreakable forty-character word would otherwise widen its own grid column,
+   * and a grid column is as wide as the page — so a single epic could make the
+   * whole map scroll sideways from inside a `grid-cols-1`.
+   */
   const shell = cn(
-    'bg-card w-full rounded-lg border p-3 text-left transition-colors',
+    'bg-card w-full min-w-0 rounded-lg border p-3 text-left transition-colors',
     open && 'ring-primary/40 border-primary/40 ring-2',
   )
 

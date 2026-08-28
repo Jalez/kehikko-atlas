@@ -1,3 +1,4 @@
+import { ChevronRight } from 'lucide-react'
 import type { ModuleContext } from 'roadmap-module-protocol'
 import type { Territory } from '../../atlas/grouping.ts'
 import { GET_EPIC, GOTO, LIST_EPICS } from '../../atlas/methods.ts'
@@ -35,11 +36,32 @@ export function Diagnostics({
   const surplus = [...new Set(reading.epics.flatMap((epic) => epic.unread))].sort()
 
   return (
-    <details className="rounded-md border p-3 text-xs">
-      <summary className="text-muted-foreground cursor-pointer font-medium">
-        What the host said, and what was read
+    <details className="group rounded-md border p-3 text-xs">
+      {/*
+        `min-h-9` and `items-center` on the summary rather than letting it be as
+        tall as one line of 12-pixel text. It was 16 pixels high, which is a
+        target a finger cannot reliably hit and a pointer has to aim at — and it
+        is the only way into everything below it, so missing it reads as "this
+        does not open" rather than as "I missed".
+
+        `list-none` with a chevron of the details' own, because the native marker
+        is laid out outside the box in a way that costs horizontal space this
+        pane cannot spare, and because a marker that turns is the same
+        affordance the folded project sections use.
+      */}
+      <summary className="text-muted-foreground flex min-h-9 cursor-pointer list-none items-center gap-2 font-medium select-none [&::-webkit-details-marker]:hidden">
+        <ChevronRight className="size-3.5 shrink-0 transition-transform group-open:rotate-90" />
+        <span className="min-w-0">What the host said, and what was read</span>
       </summary>
-      <dl className="text-muted-foreground mt-3 grid grid-cols-[auto_1fr] gap-x-4 gap-y-1.5 font-mono leading-relaxed">
+      {/*
+        Two columns at anything but the narrowest pane, and one below that. The
+        left column is `auto`, so it is as wide as the widest term — and beside a
+        130-pixel value column that is a grid where every value wraps to three
+        lines while a fifth of the width holds the word "entries". Stacking the
+        term over its value gives the value the whole pane, which is what the
+        values here need: they are method names, slugs and host sentences.
+      */}
+      <dl className="text-muted-foreground mt-3 grid grid-cols-1 gap-x-4 gap-y-1.5 font-mono leading-relaxed @xs/page:grid-cols-[auto_1fr] [&>dt]:mt-1.5 [&>dt]:font-semibold @xs/page:[&>dt]:mt-0 @xs/page:[&>dt]:font-medium">
         <dt>asked</dt>
         <dd className="break-all">{LIST_EPICS}</dd>
 
@@ -61,7 +83,12 @@ export function Diagnostics({
         {reading.skipped.length > 0 ? (
           <>
             <dt className="text-destructive">skipped</dt>
-            <dd className="text-destructive space-y-0.5">
+            {/*
+              A skip reason quotes the host's own string back — a bent slug, up
+              to forty characters of it — so this is a host-authored value and
+              breaks anywhere rather than setting a floor under the grid.
+            */}
+            <dd className="text-destructive space-y-0.5 break-words">
               {reading.skipped.map((skip) => (
                 <div key={`${skip.at}-${skip.why}`}>
                   #{skip.at}: {skip.why}

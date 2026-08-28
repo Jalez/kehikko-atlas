@@ -1,3 +1,4 @@
+import { ChevronRight } from 'lucide-react'
 import { MODULE_MESSAGES } from 'roadmap-module-protocol'
 import { GOTO } from '../../atlas/methods.ts'
 
@@ -33,7 +34,11 @@ export function Travel({ canAsk, reason }: { canAsk: boolean; reason: string | n
     <section className="text-muted-foreground space-y-3 text-xs leading-relaxed">
       <h2 className="text-foreground text-sm font-semibold">Why nothing here opens</h2>
 
-      <p className="text-pretty">
+      {/*
+        `reason` ends in a sentence the host wrote, which may name a method or a
+        slug longer than a narrow pane. It breaks rather than pushing the page.
+      */}
+      <p className="break-words text-pretty">
         {reason ??
           'There is no host to ask. Opened on its own, this page is a map with nothing on the other end of it, and a row that looked pressable would be promising something that cannot happen.'}
       </p>
@@ -56,9 +61,17 @@ export function Travel({ canAsk, reason }: { canAsk: boolean; reason: string | n
         </p>
       ) : null}
 
-      <details className="rounded-md border p-3">
-        <summary className="text-foreground cursor-pointer text-xs font-medium">
-          The shape of the ask, and what its answer has to carry
+      <details className="group rounded-md border p-3">
+        {/*
+          The same floor the diagnostics summary has, for the same reason: a
+          summary is as tall as its text unless told otherwise, and one line of
+          12-pixel text is a target under 20 pixels high. `items-start` rather
+          than `items-center` because this label wraps to two or three lines in a
+          narrow pane and a centred chevron would drift down the middle of them.
+        */}
+        <summary className="text-foreground flex min-h-9 cursor-pointer list-none items-start gap-2 py-1 text-xs font-medium select-none [&::-webkit-details-marker]:hidden">
+          <ChevronRight className="mt-0.5 size-3.5 shrink-0 transition-transform group-open:rotate-90" />
+          <span className="min-w-0">The shape of the ask, and what its answer has to carry</span>
         </summary>
         <div className="mt-3 space-y-3">
           <p className="text-pretty">
@@ -67,6 +80,16 @@ export function Travel({ canAsk, reason }: { canAsk: boolean; reason: string | n
             somewhere, and <code className="font-mono">roadmap.went</code> answers whether the walk
             found anything. What was missing was the mirror.
           </p>
+          {/*
+            The one block on the page that is allowed to be wider than the pane,
+            and it scrolls inside itself to pay for it. Reflowing this would move
+            the comments off the lines they annotate and put the closing brace
+            somewhere it means nothing; shrinking the type to fit 220 pixels
+            would put it under nine pixels. So it keeps its shape and the reader
+            drags it, which costs them a gesture and costs the rest of the page
+            nothing — a `<pre>` without `overflow-x-auto` makes the BODY scroll
+            sideways, which hides the right-hand edge of every row above it.
+          */}
           <pre className="bg-muted overflow-x-auto rounded p-3 font-mono text-[11px] leading-relaxed">
             {`// the ask, module → host
 { epic?: string,   // which epic to show

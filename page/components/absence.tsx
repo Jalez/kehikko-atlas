@@ -20,15 +20,27 @@ export function Absence({ situation, again }: { situation: Situation; again: (()
   const said = words(situation)
 
   return (
-    <Card className="mx-auto max-w-2xl">
-      <CardHeader>
-        <CardTitle className="text-balance text-lg leading-snug">{said.headline}</CardTitle>
+    /*
+      The card's own padding is halved below roughly 380 pixels of pane. shadcn's
+      Card is `py-6` with `px-6` on both slots, which is 96 pixels of the 188 a
+      220-pixel pane has to give — the sentence explaining why there is no map
+      would be laid out in a column four words wide, inside a border drawn to
+      make it feel deliberate. This is the one screen a reader gets when nothing
+      else is on the page, so the words get the room.
+    */
+    <Card className="mx-auto max-w-2xl gap-4 py-4 @sm/page:gap-6 @sm/page:py-6">
+      <CardHeader className="px-4 @sm/page:px-6">
+        <CardTitle className="text-lg leading-snug break-words text-balance">
+          {said.headline}
+        </CardTitle>
         <CardDescription className="sr-only">
           Why this is not the same as an empty roadmap
         </CardDescription>
       </CardHeader>
-      <CardContent className="space-y-4">
-        <p className="text-muted-foreground text-pretty text-sm leading-relaxed">{said.body}</p>
+      <CardContent className="space-y-4 px-4 @sm/page:px-6">
+        <p className="text-muted-foreground text-sm leading-relaxed break-words text-pretty">
+          {said.body}
+        </p>
 
         {/*
           A refusal carries two things and both are shown. `reason` is the word
