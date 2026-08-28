@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Atlas — projects and their epics</title>
+    <meta
+      name="description"
+      content="A map of the territory: which projects exist, and which epics are in each of them."
+    />
+  </head>
+  <body>
+    <!--
+      One mount point and no fallback content.
+
+      A "Loading…" or a "JavaScript is required" here would be the first thing a
+      reader sees, and the whole argument of this app is that a page must not
+      say something is coming when it does not know that. The React tree draws
+      its own honest state on its first frame — including the state where there
+      is no host at all — so there is nothing for a placeholder to cover.
+    -->
+    <div id="atlas"></div>
+    <script type="module" src="./main.tsx"></script>
+  </body>
+</html>

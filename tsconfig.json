@@ -1,0 +1,28 @@
+{
+  "compilerOptions": {
+    "lib": ["ESNext", "DOM", "DOM.Iterable"],
+    "target": "ESNext",
+    "module": "Preserve",
+    "moduleResolution": "bundler",
+    "allowImportingTsExtensions": true,
+    "verbatimModuleSyntax": true,
+    "noEmit": true,
+    "jsx": "react-jsx",
+    "strict": true,
+    "skipLibCheck": true,
+    "noUncheckedIndexedAccess": true,
+    "noUnusedLocals": true,
+    "types": ["bun"],
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["./page/*"]
+      // `roadmap-module-protocol` was mapped here to its source in the
+      // repository this app used to share with it. It is a separate repository
+      // now and an ordinary dependency, resolved by name with no mapping —
+      // which is what the fix to that package's own `exports` bought. The long
+      // version of what was wrong is PACKAGING.md, over there.
+    }
+  },
+  "include": ["."],
+  "exclude": ["node_modules", "dist"]
+}
