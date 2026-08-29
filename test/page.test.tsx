@@ -763,3 +763,342 @@ describe('the compact form, in a pane too narrow for a map', () => {
     expect(compact().querySelectorAll('ul li').length).toBe(0)
   })
 })
+
+/**
+ * The short form, in a pane with no height.
+ *
+ * Whether it FITS is the whole point of it and is not settleable here: happy-dom
+ * answers zero to every measurement and applies no stylesheet, so all three
+ * layouts are equally "visible" to it. The pixels are asserted in a browser
+ * against a real pane. What is settleable without one is that the tree exists,
+ * that the height decides it and the height alone, that the two forms of picker
+ * are both drawn and chosen by width, and — the thing that made this a change to
+ * the page rather than a new component — that all three layouts navigate ONE
+ * reader, not three.
+ */
+describe('the short form, in a pane with no height', () => {
+  const answer = {
+    epics: [
+      { slug: 'off-means-off', title: 'Off means off', project: 'Roadmap', steps: 9 },
+      { slug: 'a-green-gate', title: 'A green gate', project: 'Roadmap' },
+      { slug: 'the-lone-one', title: 'The lone one', project: 'Courier' },
+    ],
+  }
+
+  /**
+   * The short tree, found by the attribute the probe finds it by, and its
+   * wrapper by the media query that hides it — the same string the layout is
+   * decided by, so a test that looked it up some other way would go on passing
+   * if the strip were left drawn at every height.
+   */
+  const strip = () => document.querySelector('[data-layout="strip"]')!
+  const chip = (text: string) =>
+    [...strip().querySelectorAll('[data-chip]')].find(
+      (each) => (each.textContent ?? '').trim() === text,
+    )
+
+  async function mappedPage(
+    context: { epic: string | null; project: string | null; theme: string } = hello.context,
+    state: string | null = null,
+  ) {
+    const { sent, fromHost } = frameIt()
+    render(<App />)
+    fromHost({ ...hello, context, state })
+    await waitFor(() => expect(sent.some((m) => m.type === MESSAGE.REQUEST)).toBe(true))
+    fromHost({
+      type: MESSAGE.RESPONSE,
+      id: sent.find((m) => m.type === MESSAGE.REQUEST).id,
+      ok: true,
+      data: answer,
+    })
+    await waitFor(() => expect(document.querySelector('[data-layout="strip"]')).not.toBeNull())
+    return { sent, fromHost }
+  }
+
+  test('all three layouts are in the document, and the third is chosen by HEIGHT', async () => {
+    await mappedPage()
+
+    const short = strip().closest('[class*="short:"]')!
+    expect(short.className).toContain('short:block')
+    /*
+     * A media query, and the only one on this page. Every width decision here
+     * is asked of the column through a container query, because the column is
+     * `max-w-5xl` and the pane is not; nothing caps the page's HEIGHT, so the
+     * frame's viewport is the honest answer for height and the wrong one for
+     * width. See the essay in `styles.css`.
+     */
+    expect(short.className).not.toMatch(/@\w+[-[]/)
+    // And the other two are still there, chosen by the width of the column.
+    expect(document.querySelector('nav[aria-label="breadcrumb"]')).not.toBeNull()
+    expect(document.querySelector('nav[aria-label="Projects"]')).not.toBeNull()
+  })
+
+  test('the two forms that ordinary panes get are hidden by ONE query, not by two racing', async () => {
+    await mappedPage()
+
+    /*
+     * `short:hidden` is a media query and `@min-[300px]/page:block` is a
+     * container query. Two of those on one element are two rules of equal
+     * weight whose winner is whichever Tailwind emitted last — a layout that
+     * works because of a sort order breaks on an upgrade, silently, in the
+     * shape nobody resizes to. So the height hides a wrapper and the width
+     * decides inside it.
+     */
+    const drill = document.querySelector('[class*="@min-[300px]/page:hidden"]')!
+    const map = document.querySelector('nav[aria-label="Projects"]')!.closest('[class~="hidden"]')!
+    for (const form of [drill, map]) {
+      expect(form.className).not.toContain('short:')
+    }
+    expect(drill.closest('[class*="short:hidden"]')).not.toBeNull()
+    expect(map.closest('[class*="short:hidden"]')).not.toBeNull()
+  })
+
+  test('it draws two pickers two ways, and the width chooses between them', async () => {
+    await mappedPage()
+
+    const selects = strip().querySelector('[data-pickers="selects"]')!
+    const lists = strip().querySelector('[data-pickers="lists"]')!
+    expect(selects.className).toContain('@min-[420px]/page:hidden')
+    expect(lists.className).toContain('@min-[420px]/page:flex')
+    /*
+     * A container query on the column, like every other width decision here —
+     * not `sm:`, which would be the frame's viewport rather than this column,
+     * and which past a thousand pixels measures space the pickers never get.
+     */
+    for (const form of [selects, lists]) {
+      expect(form.className).not.toMatch(/(^|\s)(sm|md|lg|xl):/)
+    }
+  })
+
+  test('the epic picker holds what the HOST says is open, and pressing does not set it', async () => {
+    await mappedPage({ epic: 'off-means-off', project: 'Roadmap', theme: 'light' })
+
+    expect(chip('Off means off')!.getAttribute('aria-current')).toBe('page')
+    expect(chip('A green gate')!.getAttribute('aria-current')).toBeNull()
+
+    /*
+     * Pressing asks the host to move; it does not mark anything. The marker is
+     * where `roadmap.context` says the reader is, which is the only source for
+     * where anybody actually ended up — the same rule the cards and the rows
+     * follow, applied to a control that has somewhere to put a value. This is
+     * the whole of why a select is safe here where the first build's pair was
+     * not: there is no second pick to go stale.
+     */
+    act(() => (chip('A green gate') as HTMLElement).click())
+    expect(chip('A green gate')!.getAttribute('aria-current')).toBeNull()
+    expect(chip('Off means off')!.getAttribute('aria-current')).toBe('page')
+  })
+
+  test('picking a project in the short form moves the drill-down too', async () => {
+    /*
+     * The reason this was a change to the page and not a new component. Both
+     * trees are in the document at once — CSS hides one, nothing unmounts it —
+     * so two copies of the navigation would not even be reset by a resize: a
+     * reader who picks a project in a short pane and drags it tall would find
+     * the other component's untouched state, at Home, and would reasonably read
+     * that as the page having forgotten.
+     */
+    await mappedPage()
+    act(() => (chip('Courier') as HTMLElement).click())
+
+    const crumb = document.querySelector('nav[aria-label="breadcrumb"]')!
+    expect(crumb.textContent).toContain('Courier')
+    // And the drill-down is showing that project's epics, not the other's.
+    const compactTree = document.querySelector('[class*="@min-[300px]/page:hidden"]')!
+    expect(compactTree.textContent).toContain('The lone one')
+    expect(compactTree.textContent).not.toContain('Off means off')
+  })
+
+  test('and the host is asked to keep it, once, in the shape `keep.ts` writes', async () => {
+    const { sent } = await mappedPage()
+    act(() => (chip('Courier') as HTMLElement).click())
+
+    const kept = sent.filter(
+      (m) => m.type === MESSAGE.REQUEST && typeof m.method === 'string' && m.method.startsWith('state.'),
+    )
+    expect(kept.length).toBe(1)
+    expect(JSON.parse(kept[0].params.state)).toMatchObject({ at: 'epics', p: 'Courier' })
+  })
+
+  test('a place the host remembered opens the short form there, not at Home', async () => {
+    await mappedPage(hello.context, JSON.stringify({ v: 1, at: 'epics', p: 'Courier' }))
+    await waitFor(() => expect(chip('Courier')?.getAttribute('aria-pressed')).toBe('true'))
+    expect(chip('The lone one')).toBeDefined()
+    expect(chip('Off means off')).toBeUndefined()
+  })
+
+  test('with nobody to ask, there is no strip and no dead control', async () => {
+    unframe()
+    render(<App />)
+    /*
+     * Standalone there is no map at all, so there is nothing for a strip to
+     * pick from — the absence is drawn instead, at every height, in the words
+     * every other size gets.
+     */
+    expect(document.querySelector('[data-layout="strip"]')).toBeNull()
+    expect(screen.getByText(words({ kind: 'unframed' }).headline)).toBeDefined()
+  })
+
+  test('the absence screens are drawn once, not once per layout', async () => {
+    /*
+     * The short form does not get its own copy of them. They are the six
+     * sentences this app exists to keep apart, and a second set for short panes
+     * would be a second set to hold in step with the first; drawing the same
+     * component twice was worse still, because both copies are in the
+     * accessibility tree and every query for the sentence finds two.
+     */
+    const { sent, fromHost } = frameIt()
+    render(<App />)
+    fromHost(hello)
+    await waitFor(() => expect(sent.some((m) => m.type === MESSAGE.REQUEST)).toBe(true))
+    fromHost({
+      type: MESSAGE.RESPONSE,
+      id: sent.find((m) => m.type === MESSAGE.REQUEST).id,
+      ok: true,
+      data: { epics: [] },
+    })
+    const said = words({ kind: 'none' }).headline
+    await waitFor(() => expect(screen.getAllByText(said).length).toBe(1))
+  })
+})
+
+/**
+ * What the short form says, given that it has almost no room to say anything.
+ *
+ * Its own section because it is the one place this app deliberately breaks a
+ * rule it argues for elsewhere: `chooser.ts` requires a list that moves somebody
+ * to state, in prose and always, whether it can. The strip does not, because
+ * that sentence is a sixth of a 120-pixel pane spent on a line read once — and
+ * these are the assertions that the protection the rule was for survived the
+ * prose being dropped.
+ */
+describe('the short form’s prose, and where it went', () => {
+  const answer = {
+    epics: [
+      { slug: 'off-means-off', title: 'Off means off', project: 'Roadmap', steps: 9 },
+      { slug: 'a-green-gate', title: 'A green gate', project: 'Roadmap' },
+    ],
+  }
+
+  const strip = () => document.querySelector('[data-layout="strip"]')!
+  const epicItems = () => [...strip().querySelectorAll('[aria-label="Epics"] [data-chip]')]
+
+  async function mapped() {
+    const { sent, fromHost } = frameIt()
+    render(<App />)
+    fromHost({ ...hello, context: { epic: null, project: 'Roadmap', theme: 'light' } })
+    await waitFor(() => expect(sent.some((m) => m.type === MESSAGE.REQUEST)).toBe(true))
+    fromHost({
+      type: MESSAGE.RESPONSE,
+      id: sent.find((m) => m.type === MESSAGE.REQUEST).id,
+      ok: true,
+      data: answer,
+    })
+    await waitFor(() => expect(document.querySelector('[data-layout="strip"]')).not.toBeNull())
+    return { sent, fromHost }
+  }
+
+  /** Answer the module's outstanding `view.goto` however the test needs. */
+  const answerTravel = (
+    sent: any[],
+    fromHost: (m: unknown) => void,
+    body: Record<string, unknown>,
+    ok = true,
+  ) => {
+    const ask = [...sent].reverse().find((m) => m.type === MESSAGE.REQUEST && m.method === 'view.goto')
+    expect(ask).toBeDefined()
+    fromHost({ type: MESSAGE.RESPONSE, id: ask.id, ok, ...(ok ? { data: body } : body) })
+  }
+
+  test('the standing sentence costs no height, and is on the controls instead', async () => {
+    await mapped()
+
+    /*
+     * No element, rather than an empty one: an empty `<p>` holds its
+     * line-height open for a sentence that is not there and spends the pixels
+     * anyway. The measured cost of drawing it was 20 of a 120-pixel pane, which
+     * is the difference between six epics visible at 500 wide and three.
+     */
+    expect(strip().querySelector('p')).toBeNull()
+
+    // And it is one hover or one screen reader away, on every control that moves.
+    const first = epicItems()[0]!
+    expect(first.getAttribute('title')).toBe('Choosing one asks the host to show it.')
+    /*
+     * The `aria-label` carries the NAME as well as the sentence. A label that
+     * replaced the name would trade a caption for the thing being captioned.
+     */
+    expect(first.getAttribute('aria-label')).toContain('Off means off')
+    expect(first.getAttribute('aria-label')).toContain('asks the host to show it')
+  })
+
+  test('but what the host says about an attempt does get a line', async () => {
+    const { sent, fromHost } = await mapped()
+    act(() => (epicItems()[1] as HTMLElement).click())
+    act(() =>
+      answerTravel(sent, fromHost, {
+        outcome: 'declined',
+        epic: null,
+        why: 'the reader has unsaved edits open',
+      }),
+    )
+
+    /*
+     * News, not instructions: the answer to a question the reader has just
+     * asked by pressing something, and the one case where prose in a strip is
+     * worth its pixels.
+     */
+    await waitFor(() =>
+      expect(strip().querySelector('p')?.textContent).toBe('the reader has unsaved edits open'),
+    )
+    // Announced, because it appeared in response to a press rather than a move.
+    expect(strip().querySelector('p')?.getAttribute('aria-live')).toBe('polite')
+  })
+
+  test('a move says nothing, because the canvas already said it', async () => {
+    const { sent, fromHost } = await mapped()
+    act(() => (epicItems()[1] as HTMLElement).click())
+    act(() => answerTravel(sent, fromHost, { outcome: 'moved', epic: 'a-green-gate', why: '' }))
+
+    await waitFor(() => expect(strip().querySelector('p')).toBeNull())
+  })
+
+  test('where nothing can be asked, the items are not controls at all', async () => {
+    const { sent, fromHost } = await mapped()
+    act(() => (epicItems()[0] as HTMLElement).click())
+    act(() =>
+      answerTravel(
+        sent,
+        fromHost,
+        { reason: 'unknown-method', error: 'this host cannot be asked to move' },
+        false,
+      ),
+    )
+
+    /*
+     * The protection the dropped sentence was providing, kept structurally.
+     * There is no false affordance to warn anybody about, because there is no
+     * affordance: `cannot-ask` is sticky, so every item becomes inert text and
+     * carries the host's own reason where the standing sentence used to be.
+     */
+    await waitFor(() => expect(epicItems()[0]!.tagName).toBe('SPAN'))
+    expect(epicItems().every((each) => each.tagName === 'SPAN')).toBe(true)
+    expect(epicItems()[0]!.getAttribute('title')).toContain('cannot be asked to move')
+    // And it is not ALSO printed as a line, which would be the same sentence twice.
+    expect(strip().querySelector('p')).toBeNull()
+  })
+
+  test('the strip uses the whole pane, where the reading column does not', async () => {
+    await mapped()
+
+    /*
+     * `max-w-5xl` is a reading measure and the strip is not made of sentences —
+     * under the cap, a 1600-pixel band drew its epics in a 1024-pixel column
+     * with 290 pixels of nothing down each side, which is the layout that
+     * trades width for height declining most of the width it was given.
+     */
+    const ruler = document.querySelector('[class*="@container/page"]')!
+    expect(ruler.className).toContain('max-w-5xl')
+    expect(ruler.className).toContain('short:max-w-none')
+  })
+})

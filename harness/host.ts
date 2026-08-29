@@ -44,6 +44,7 @@ const PAGE = /* html */ `<!doctype html>
     <button data-answer="full">a full roadmap (5 projects, 27 epics)</button>
     <button data-answer="lopsided">one project of 15, four of one</button>
     <button data-answer="messy">half-readable: bad slugs, missing fields</button>
+    <button data-answer="cruel">names too long for any pane</button>
     <button data-answer="bare">a bare array, not the agreed shape</button>
     <button data-answer="empty">genuinely no epics</button>
     <button data-answer="rubbish">an answer with no list in it</button>
@@ -100,6 +101,21 @@ const ANSWERS = {
     { slug: 'a-loose-one', title: 'Filed under nothing', steps: [1,2,3] },
     { slug: 'off-means-off', title: 'the same slug twice' },
     { slug: 'rich', title: 'A host that knows more', project: 'Courier', owner: 'jo', stage: 'in-review', refs: ['gh#41'] },
+  ] }),
+  /*
+   * The one answer that is not about shape at all. Every field here is
+   * well-formed and simply too long: an unbroken 90-character project name, an
+   * epic title with no space in it anywhere, and a slug of the kind a generator
+   * produces. It exists because a flex item's floor is its own min-content
+   * width unless something says otherwise, so ONE unbreakable word is enough to
+   * push a row, a list and the whole page past the right edge of the pane — and
+   * that failure is invisible to every other answer here, all of which use
+   * words a browser is happy to wrap.
+   */
+  cruel: () => ({ epics: [
+    { slug: 'a-perfectly-ordinary-slug', title: 'Anunbrokentitlewithnospaceinitanywherewhichisthethingthatpushesapanesideways', project: 'AProjectNameNobodyWouldChooseButAHostMaySendAnyway'.repeat(2), steps: 3 },
+    { slug: 'the-second-one-of-these-with-a-generated-identifier-that-runs-on', title: null, project: 'AProjectNameNobodyWouldChooseButAHostMaySendAnyway'.repeat(2) },
+    { slug: 'short', title: 'Short', project: 'Fine' },
   ] }),
   bare: () => make(4, 'Roadmap'),
   empty: () => ({ epics: [] }),

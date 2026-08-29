@@ -1,4 +1,4 @@
-import { type ReactNode, useEffect, useState } from 'react'
+import type { ReactNode } from 'react'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import {
@@ -78,8 +78,8 @@ export function Chooser({
   travelTo,
   lastTravel,
   cannotTravelBecause,
-  remembered,
-  remember,
+  chosen,
+  choose,
 }: {
   territory: Territory
   /** Ask the host to show an epic. Null when nothing could possibly answer. */
@@ -88,60 +88,20 @@ export function Chooser({
   lastTravel: { slug: string; travel: Travel } | null
   /** Why travel is impossible, when this app has been told a reason. */
   cannotTravelBecause: string | null
-  /** Where the reader was standing last time, if the host kept it. */
-  remembered: Chosen | null | undefined
-  /** Ask the host to keep where they are now. Null when nothing can keep it. */
-  remember: ((chosen: Chosen | null) => void) | null
+  /**
+   * Where the reader has navigated, in the sense `Chosen` describes.
+   *
+   * Held by the page rather than here, and that changed when the short form
+   * arrived: both forms are in the document at once, both ask the same two
+   * questions, and both write the same saved string. A copy in each would be
+   * two answers to "which project is the reader looking at", and the resize
+   * that swaps which one is on screen would look like the page changing its
+   * mind. See `page/place.ts`.
+   */
+  chosen: Chosen | null
+  /** Navigate. The only way to move, and it saves. */
+  choose: (next: Chosen | null) => void
 }) {
-  /**
-   * One piece of state for the whole form, and it is the reader's navigation
-   * rather than the screen.
-   *
-   * The two selects held two picks and had to clear one whenever the other
-   * changed; a drill-down cannot get into that state, because there is no second
-   * pick to go stale — an epic is not chosen here at all, it is pressed, and
-   * pressing it asks the host rather than filling anything in. `placeShown`
-   * turns this plus the territory into what is drawn, so the screen is a
-   * function of one answer and one navigation, and there is nothing to keep in
-   * step with anything.
-   */
-  const [chosen, setChosen] = useState<Chosen | null>(null)
-  /**
-   * Whether the drill-down has been settled, either by the host's memory or by
-   * the reader's own hand.
-   *
-   * It exists because `chosen` has no value that means "not seeded yet" —
-   * `null` is already taken, and it means something specific (the reader has
-   * not navigated, so the host's standing decides). Without a second flag the
-   * restore below would either be unable to restore `null`, or would keep
-   * firing and stomp a reader who navigated before the greeting landed.
-   *
-   * Set by the reader's first press as well as by the restore, and that is the
-   * important half: a greeting can arrive late, and a remembered place arriving
-   * after somebody has already pressed Home would throw them back into the
-   * project they had just left — the same bug the fix was for, running the
-   * other way.
-   */
-  const [settled, setSettled] = useState(false)
-
-  useEffect(() => {
-    if (settled || remembered === undefined) return
-    setChosen(remembered)
-    setSettled(true)
-  }, [remembered, settled])
-
-  /**
-   * Every navigation in this component goes through here.
-   *
-   * One place, so that saving cannot be forgotten by a branch added later, and
-   * so the settled flag cannot drift from the state it guards.
-   */
-  const choose = (next: Chosen | null) => {
-    setChosen(next)
-    setSettled(true)
-    remember?.(next)
-  }
-
   const place = placeShown(territory, chosen)
   const toProjects = () => choose({ at: 'projects' })
 

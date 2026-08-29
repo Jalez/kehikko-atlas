@@ -4,9 +4,11 @@ import { Chooser } from './components/chooser.tsx'
 import { Diagnostics } from './components/diagnostics.tsx'
 import { Overview } from './components/overview.tsx'
 import { ProjectSection } from './components/project-section.tsx'
+import { Strip } from './components/strip.tsx'
 import { Travel } from './components/travel.tsx'
 import { travelWords } from '../atlas/navigation.ts'
 import { isFramed } from './attach.ts'
+import { usePlace } from './place.ts'
 import { useAtlas } from './use-atlas.ts'
 
 /**
@@ -63,6 +65,44 @@ const FRAMED = isFramed()
  * and rendering one — would make the layout depend on a `ResizeObserver` having
  * fired, and would draw the wrong one for a frame on first paint.
  *
+ * ## And — under 260 pixels of HEIGHT — a third answer, whatever the width
+ *
+ * The two forms above were chosen on width alone, and width alone cannot tell a
+ * pane from a strip. A pane 900 wide and 120 tall — a band across the top of a
+ * canvas — was 900 wide, so it got the map: measured there, 1997 pixels of
+ * document in 110 pixels of window, which is a scrollbar with a few words
+ * behind it. The drill-down is not the answer either, because it is a COLUMN
+ * and the argument for a column is an argument about a pane 220 wide, where
+ * down is the only direction there is. In a strip, down is what has run out.
+ *
+ * So under 260 pixels of height, and at every width, the page is `Strip`: the
+ * two questions the drill-down asks in sequence — which project, then which
+ * epic — asked side by side, as two selects in little width and as two rows of
+ * pressable names where there is width to spend. The reasoning and the
+ * measurements are in `atlas/strip.ts` and `page/components/strip.tsx`.
+ *
+ * This one switch is a MEDIA query rather than a container query, which is the
+ * opposite of everything above and is argued in `styles.css` — the short of it
+ * is that nothing caps this page's height, so the frame's viewport is the
+ * honest answer for height in a way it never is for width, and a `size`
+ * container here would collapse the page to nothing or feed the height it
+ * reports back into itself.
+ *
+ * The three are exclusive by nesting rather than by three sets of variants
+ * racing each other: the height decides first, and inside "not short" the two
+ * width forms are exactly what they were. A regression in the common cases
+ * would have to be written on purpose.
+ *
+ * ## One navigation, three forms
+ *
+ * `chosen` lives here, in `usePlace`, and not in the form that draws it. Two of
+ * the three forms have a project to be inside, both are in the document at the
+ * same time, and both write the one string the host keeps for this module. A
+ * copy each would mean a reader who picks a project in a short pane, drags it
+ * tall, and finds themselves back at Home — not because anything reset, but
+ * because they are now looking at the other component's untouched state. See
+ * `page/place.ts`.
+ *
  * ## Why the widths are asked of this element and not of the viewport
  *
  * `@container/page` here, and `@md/page:` and `@2xl/page:` on the things that
@@ -107,6 +147,7 @@ const FRAMED = isFramed()
 export function App() {
   const { situation, context, territory, again, travelTo, lastTravel, remembered, remember } =
     useAtlas()
+  const { chosen, choose } = usePlace({ remembered, remember })
 
   /**
    * Why nothing is pressable, when nothing is.
@@ -140,8 +181,35 @@ export function App() {
       variant below is measuring is therefore the width the CONTENT has, which is
       the only width anything on this page should be deciding anything from.
     */
-    <div className="@container/page mx-auto w-full max-w-5xl">
-      <div className="space-y-5 p-3 @sm/page:space-y-6 @sm/page:p-5">
+    /*
+      `short:max-w-none`, and the cap it lifts is not decoration either.
+
+      `max-w-5xl` is a READING measure. It exists because the map is a document
+      — headings, ledes, paragraphs — and a line of prose 1600 pixels wide is
+      unreadable however much pane there is; capping the column and centring it
+      is the right answer for every layout made of sentences.
+
+      The strip is not made of sentences. It is two rows of names, and a name is
+      as readable at pixel 1500 as at pixel 100. Under the cap, a strip in a
+      1600-pixel band across the top of a canvas drew its epics in a
+      1024-pixel column with 290 pixels of nothing down each side — the layout
+      that exists to trade width for height, declining most of the width it was
+      given. So the cap comes off exactly where the content stops being prose.
+
+      It also changes what the container queries below measure, which is the
+      point rather than a side effect: `@min-[420px]/page` inside the strip now
+      asks how wide the PANE is, because in a short pane the column and the pane
+      are the same thing.
+    */
+    <div className="@container/page mx-auto w-full max-w-5xl short:max-w-none">
+      {/*
+        The padding and the rhythm come off in a short pane, and only there.
+        `Strip` draws its own, tighter, because two pixels of padding at the top
+        and bottom of a 110-pixel box are two pixels that were going to be a
+        row; and the absence below keeps the page's padding by asking for it
+        back, since it is prose rather than a control strip.
+      */}
+      <div className="space-y-5 p-3 short:space-y-0 short:p-0 @sm/page:space-y-6 @sm/page:p-5">
         {/*
           The name and the description, and ONLY when nothing is framing this
           page.
@@ -170,7 +238,15 @@ export function App() {
           watched.
         */}
         {FRAMED ? null : (
-          <header className="space-y-1">
+          /*
+            `short:hidden` and no more than that. Unframed, this is still the
+            only place the page says what it is — but a heading, a paragraph and
+            the gap between them is 70 of the 120 pixels a strip has, and a
+            reader who has opened this program on its own knows what they
+            opened. Hidden rather than shrunk: 11-pixel type saying the name of
+            the thing is worse than not saying it.
+          */
+          <header className="space-y-1 short:hidden">
             {/*
               The type does not shrink with the pane, and that is a decision
               rather than an omission. Every other thing on this page gives up
@@ -189,6 +265,44 @@ export function App() {
         {situation.kind === 'mapped' && territory ? (
           <>
             {/*
+              Under 260 pixels of pane HEIGHT: two pickers side by side, and
+              nothing else on the page at all. Not the page with the map swapped
+              out — the whole of it. The overview, the section headings, the
+              separator, the account of how travel works and the diagnostics are
+              all worth having in a pane with room for them, and in 120 pixels
+              they are 1900 pixels of document behind a scrollbar. The one thing
+              among them a strip cannot do without is the sentence saying
+              whether pressing an epic does anything, and `Strip` draws that
+              from the same `choosingDoes` the drill-down uses, so there is one
+              wording and not two.
+            */}
+            <div className="hidden short:block">
+              <Strip
+                territory={territory}
+                travelTo={travelTo}
+                lastTravel={lastTravel}
+                cannotTravelBecause={cannotTravelBecause}
+                chosen={chosen}
+                choose={choose}
+              />
+            </div>
+
+            {/*
+              Everything a pane with height gets, behind ONE `short:hidden`
+              rather than a `short:` variant added to each of the two forms
+              inside it.
+
+              That is not tidiness. `short:hidden` is a media query and
+              `@min-[300px]/page:block` is a container query, and two of those
+              on one element are two rules of equal weight whose winner is
+              decided by the order Tailwind happened to emit them in — a layout
+              that works because of a sort order is a layout that breaks on an
+              upgrade, silently, in the shape nobody resizes to. Nested, the
+              height decides first and the width decides inside it, and the two
+              forms below are character-for-character what they were.
+            */}
+            <div className="space-y-5 short:hidden @sm/page:space-y-6">
+            {/*
               A drill-down, under 300 pixels of column. See the essay above and
               `atlas/chooser.ts`; the short of it is that this is not the map
               with things taken out, it is the other thing a map is for.
@@ -199,8 +313,8 @@ export function App() {
                 travelTo={travelTo}
                 lastTravel={lastTravel}
                 cannotTravelBecause={cannotTravelBecause}
-                remembered={remembered}
-                remember={remember}
+                chosen={chosen}
+                choose={choose}
               />
             </div>
 
@@ -232,19 +346,49 @@ export function App() {
             <Separator />
             <Travel canAsk={travelTo !== null} reason={cannotTravelBecause} />
             <Diagnostics reading={situation.reading} territory={territory} context={context} />
+            </div>
           </>
         ) : (
           <>
-            <Absence situation={situation} again={again} />
+            {/*
+              One absence, at every height, in the words `atlas/situation.ts`
+              holds — and drawn once rather than twice.
+
+              A short variant of these was written and thrown away. They are the
+              six sentences this whole app exists to keep apart, and a second
+              set of them for short panes would be a second set to hold in step
+              with the first; the first drift between the two is the moment "the
+              host has not answered" and "the host has no epics" become the same
+              screen in a pane somebody dragged flat. Drawing the same component
+              in both branches was worse still: two copies in the document, both
+              read aloud, both found by every query that looks for the sentence.
+
+              So the words do not change and the box does. In a short pane it is
+              capped at the viewport and scrolls inside itself, which is this
+              app's own rule for a string too long for its box, applied for once
+              to a paragraph and a height rather than a title and a width.
+            */}
+            <div className="short:max-h-[100dvh] short:overflow-y-auto short:p-3">
+              <Absence situation={situation} again={again} />
+            </div>
             {/*
               The account of how travel works is shown even with no host. It is
               the most interesting true thing this app has to say about the
               protocol, it does not depend on there being any data, and somebody
               running this program on its own to see what it is should not have to
               arrange a host in order to find out what it can and cannot do.
+
+              Not in a strip, though: it is four screens of prose about a
+              mechanism, and the reader of a 120-pixel pane has not got four
+              screens. It is the one thing on this page that is dropped rather
+              than reshaped, because there is no shorter honest version of it —
+              and unlike everything else here it is an explanation rather than
+              an answer, so a reader who needs it can drag the pane open.
             */}
-            <Separator />
-            <Travel canAsk={false} reason={cannotTravelBecause} />
+            <div className="space-y-5 short:hidden @sm/page:space-y-6">
+              <Separator />
+              <Travel canAsk={false} reason={cannotTravelBecause} />
+            </div>
           </>
         )}
       </div>

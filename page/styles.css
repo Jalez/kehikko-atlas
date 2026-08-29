@@ -22,6 +22,85 @@
  */
 @custom-variant dark (&:is(.dark *));
 
+/*
+ * A pane with no height, which is the one question a container query here
+ * cannot answer.
+ *
+ * Every width decision in this app is asked of the page's own column, through
+ * `@container/page`, and `page/app.tsx` argues at length why: a media query is
+ * evaluated against the FRAME's viewport, and the column is `max-w-5xl`, so
+ * past a thousand pixels the pane keeps growing and the thing on screen does
+ * not. Asking the element is the only way to ask the question a reader is
+ * actually asking.
+ *
+ * Height is the case where that argument reverses, and it reverses for a
+ * concrete reason rather than a stylistic one. Nothing caps this page's height:
+ * there is no `max-h` anywhere above the content, so the height a reader has is
+ * the height of the pane and nothing intervenes between the two. The frame's
+ * viewport IS the honest answer here, in a way it never is for width.
+ *
+ * ## Why this is not `container-type: size`
+ *
+ * Because it cannot be. `inline-size` tracks width, and a `max-height` query
+ * against such a container silently never matches — it compiles, it ships, and
+ * the layout it selects never appears. The fix looks like switching the
+ * container to `size`, and that is a trap with two floors under it:
+ *
+ * - A `size` container must have a DEFINITE height or it collapses. The page's
+ *   container is `mx-auto w-full max-w-5xl` in the normal flow, its height comes
+ *   from its contents, and making it a size container makes its contents depend
+ *   on its height — which the browser resolves by making it zero. The module
+ *   renders as an empty pane, and every test that reads text out of a virtual
+ *   DOM goes on passing.
+ * - Giving it a definite height would mean `100dvh`, and this page REPORTS its
+ *   own height to the host (`reportHeight` in `page/attach.ts`) for hosts that
+ *   grow the pane to fit. A page that is always exactly as tall as its viewport
+ *   and asks to be as tall as it is, in a host that grants it, is a loop with
+ *   nothing in it to stop.
+ *
+ * A media query has neither problem: it asks the viewport, which is a fact
+ * about the frame rather than about anything this stylesheet lays out, so it
+ * cannot collapse anything and takes part in no cycle. The layout it selects
+ * caps itself at `100dvh` (see `page/components/strip.tsx`), which is what
+ * keeps the reported height from ever growing the pane back past this bound and
+ * bouncing the reader between two layouts.
+ *
+ * ## 260 pixels
+ *
+ * The bound is where the drill-down — the taller of the two existing forms, and
+ * the one a short pane falls to at narrow widths — stops being able to show
+ * anything to choose from. Measured in a browser against the harness's ordinary
+ * roadmap: the trail is 16 pixels, a row is 36 with a 4-pixel gap between rows,
+ * and the trail's gap plus the page's own padding is 36. So the trail and four
+ * rows come to 208, five to 248, and six to 288.
+ *
+ * 260 is therefore the last height at which the drill-down still shows five
+ * things to choose between, which is the whole of the harness's project list
+ * and rather less of a nine-epic project. Below it the count falls away fast —
+ * three rows at 208, two at 168 — and a list of two with no indication that
+ * there are seven more is not a list, it is the top of one.
+ *
+ * It is deliberately not set from what the MAP needs, even though the map is
+ * what a wide short pane was wrongly getting. The map's own first screen is
+ * around 300 pixels before a single card, so a bound drawn from it would sit
+ * higher and would take the drill-down away from narrow panes that were coping
+ * with it perfectly well. The bound has to be the one the WORSE-off of the two
+ * replaced forms can live with, because one query replaces both.
+ *
+ * The strip that replaces it wants 44 pixels as two selects and 80 to 116 as
+ * two rows of names, all of it well under the bound — so a host that shrinks
+ * the pane to the height this page reports cannot shrink it out of the layout
+ * it is in. And because the strip is capped at the viewport it cannot report a
+ * height ABOVE the bound either, which is the direction that would have bounced
+ * a reader between a strip and a map on every frame.
+ *
+ * One thing this variant does besides choosing a layout: it lifts the reading
+ * column's `max-w-5xl`, because the strip is made of names rather than
+ * sentences and a name is as readable at pixel 1500 as at pixel 100. The
+ * reasoning is in `page/app.tsx`, at the element it comes off.
+ */
+@custom-variant short (@media (max-height: 260px));
+
 :root {
   --radius: 0.625rem;
   --background: oklch(1 0 0);
