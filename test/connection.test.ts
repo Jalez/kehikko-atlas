@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test'
-import { MESSAGE, PROTOCOL } from 'roadmap-module-protocol'
+import { MESSAGE, PROTOCOL } from 'kehikot-module-protocol'
 import { Connection } from '../atlas/connection.ts'
 
 /**
@@ -20,7 +20,7 @@ function harness(patience = 1000) {
   let n = 0
 
   const connection = new Connection({
-    moduleId: 'roadmap.atlas',
+    moduleId: 'kehikot.atlas',
     send: (message) => sent.push(message),
     patience,
     later: (fn, ms) => {
@@ -53,8 +53,16 @@ describe('the greeting', () => {
   test('is answered with ready, carrying this module’s id', () => {
     const { connection, sent } = harness()
     expect(connection.receive(hello)).toBe('hello')
-    expect(sent).toEqual([{ type: MESSAGE.READY, id: 'roadmap.atlas', protocol: PROTOCOL }])
+    expect(sent).toEqual([{ type: MESSAGE.READY, id: 'kehikot.atlas', protocol: PROTOCOL }])
     expect(connection.hasBeenGreeted).toBe(true)
+  })
+
+  test('a host from before the rename is answered in its own spelling', () => {
+    const { connection, sent } = harness()
+    /* `roadmap.hello` is what an unchanged host sends; it only understands
+       `roadmap.ready` and a `roadmap.` module id back. */
+    expect(connection.receive({ ...hello, type: 'roadmap.hello' })).toBe('hello')
+    expect(sent).toEqual([{ type: 'roadmap.ready', id: 'roadmap.atlas', protocol: PROTOCOL }])
   })
 
   test('is answered every time, because a reload is a greeting this side cannot see', () => {
@@ -79,7 +87,7 @@ describe('the greeting', () => {
 })
 
 describe('what is not a message for us', () => {
-  test('anything without a roadmap. prefix is ignored', () => {
+  test('anything without a kehikot. prefix is ignored', () => {
     const { connection, sent } = harness()
     expect(connection.receive({ type: 'vite:beforeUpdate' })).toBe('not-ours')
     expect(connection.receive('a string')).toBe('not-ours')
@@ -88,7 +96,7 @@ describe('what is not a message for us', () => {
     expect(sent).toHaveLength(0)
   })
 
-  test('a roadmap message with the wrong shape is dropped, not half-read', () => {
+  test('a kehikot message with the wrong shape is dropped, not half-read', () => {
     const { connection, sent } = harness()
     expect(connection.receive({ type: MESSAGE.HELLO })).toBe('malformed')
     expect(connection.receive({ type: MESSAGE.CONTEXT, epic: 'NOT A SLUG' })).toBe('malformed')
@@ -99,7 +107,7 @@ describe('what is not a message for us', () => {
     // `hostMessageSchema` covers one direction only, which is what stops this
     // side from treating its own vocabulary as something it was told.
     const { connection } = harness()
-    expect(connection.receive({ type: MESSAGE.READY, id: 'roadmap.atlas' })).toBe('malformed')
+    expect(connection.receive({ type: MESSAGE.READY, id: 'kehikot.atlas' })).toBe('malformed')
     expect(connection.receive({ type: MESSAGE.RESIZE, height: 400 })).toBe('malformed')
   })
 })

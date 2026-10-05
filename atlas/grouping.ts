@@ -14,7 +14,7 @@ import type { Epic } from './reading.ts'
  * ## A project nothing else mentions
  *
  * The interesting case, and the one this file exists to get right. If fourteen
- * epics say "Roadmap" and one says "Courier", then "Courier" is a project with
+ * epics say "Kehikot" and one says "Courier", then "Courier" is a project with
  * one epic in it. It is not noise, not a typo to be folded into its nearest
  * neighbour, and not a candidate for an "other" bucket. Three reasons, in
  * increasing order of how much they matter:
@@ -64,7 +64,7 @@ export interface Territory {
   /**
    * The epic the host says is open, when it turned out to be one of these.
    *
-   * `roadmap.context` carries an epic slug and a project, and the protocol is
+   * `kehikot.context` carries an epic slug and a project, and the protocol is
    * explicit about why those two and nothing else: they are what a host can
    * vouch for. So this is a fact about the same kind of thing this map is made
    * of, and matching it is a straightforward comparison rather than a hopeful
@@ -94,7 +94,7 @@ export interface Territory {
  * will never care about, is a change to this file's signature.
  */
 export interface Standing {
-  /** The epic the host says is open, as `roadmap.context` spells it. */
+  /** The epic the host says is open, as `kehikot.context` spells it. */
   epic: string | null
   /** The project that epic belongs to, as the host reports it. */
   project: string | null

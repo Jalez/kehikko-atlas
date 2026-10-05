@@ -27,7 +27,7 @@ const { render, screen, cleanup, waitFor, act } = await import('@testing-library
 const { App } = await import('../page/app.tsx')
 const { words } = await import('../atlas/situation.ts')
 const { UNDESCRIBED_PROJECT } = await import('../atlas/chooser.ts')
-const { MESSAGE, PROTOCOL } = await import('roadmap-module-protocol')
+const { MESSAGE, PROTOCOL } = await import('kehikot-module-protocol')
 
 /**
  * Pretend something is framing this page.
@@ -109,8 +109,8 @@ describe('with nothing on the other end', () => {
 describe('against a host that answers', () => {
   const answer = {
     epics: [
-      { slug: 'off-means-off', title: 'Off means off', project: 'Roadmap', steps: 9 },
-      { slug: 'a-green-gate', title: 'A green gate means something', project: 'Roadmap' },
+      { slug: 'off-means-off', title: 'Off means off', project: 'Kehikot', steps: 9 },
+      { slug: 'a-green-gate', title: 'A green gate means something', project: 'Kehikot' },
       { slug: 'the-lone-one', title: 'The lone one', project: 'Courier', steps: 3 },
       { slug: 'unfiled', title: 'Filed under nothing' },
     ],
@@ -275,7 +275,7 @@ describe('a project with fifteen epics does not swallow the page', () => {
         ...Array.from({ length: 15 }, (_, i) => ({
           slug: `big-${i + 1}`,
           title: `Big ${i + 1}`,
-          project: 'Roadmap',
+          project: 'Kehikot',
         })),
         { slug: 'small-1', title: 'Small 1', project: 'Courier' },
       ],
@@ -424,7 +424,7 @@ describe('what decides the layout is the pane, not the window', () => {
       type: MESSAGE.RESPONSE,
       id: sent.find((m) => m.type === MESSAGE.REQUEST).id,
       ok: true,
-      data: { epics: [{ slug: 'one', title: 'One', project: 'Roadmap' }] },
+      data: { epics: [{ slug: 'one', title: 'One', project: 'Kehikot' }] },
     })
     await waitFor(() => expect(screen.getByText('One')).toBeDefined())
 
@@ -477,7 +477,7 @@ describe('the compact form, in a pane too narrow for a map', () => {
         slug: 'off-means-off',
         title: 'Off means off',
         lede: 'A setting that is off stays off across every surface that reads it.',
-        project: 'Roadmap',
+        project: 'Kehikot',
         steps: 9,
       },
       { slug: 'the-lone-one', title: 'The lone one', project: 'Courier' },
@@ -557,7 +557,7 @@ describe('the compact form, in a pane too narrow for a map', () => {
      * is a project and every number on it is a count of epics, so "6 epics"
      * thirteen times is thirteen copies of a word that says nothing.
      */
-    expect(rowText()).toEqual(['Roadmap1', 'Courier1'])
+    expect(rowText()).toEqual(['Kehikot1', 'Courier1'])
     /*
      * And none of what the wide map draws around a title. The host sent a lede
      * and slugs; the compact tree is where they must not appear, because
@@ -571,12 +571,12 @@ describe('the compact form, in a pane too narrow for a map', () => {
 
   test('pressing a project shows its epics, and the breadcrumb says which project', async () => {
     await mappedPage()
-    press('Roadmap')
+    press('Kehikot')
 
     expect(rowText()).toEqual(['Off means off9'])
     const trail = compact().querySelector('nav[aria-label="breadcrumb"]')!
     expect((trail.textContent ?? '').replace(/\s+/g, ' ')).toContain('Home')
-    expect(trail.textContent).toContain('Roadmap')
+    expect(trail.textContent).toContain('Kehikot')
     // The epics of the project that was not pressed are not on this screen.
     expect(compact().textContent).not.toContain('The lone one')
   })
@@ -584,13 +584,13 @@ describe('the compact form, in a pane too narrow for a map', () => {
   test('the back button returns to the projects, and so does the Home crumb', async () => {
     await mappedPage()
 
-    press('Roadmap')
+    press('Kehikot')
     const back = [...compact().querySelectorAll('button')].find(
       (button) => (button.textContent ?? '').trim() === 'Projects',
     )
     expect(back).toBeDefined()
     act(() => back!.click())
-    expect(rowText()).toEqual(['Roadmap1', 'Courier1'])
+    expect(rowText()).toEqual(['Kehikot1', 'Courier1'])
 
     /*
      * And the crumb again, because the two are deliberately not one control —
@@ -602,12 +602,12 @@ describe('the compact form, in a pane too narrow for a map', () => {
     expect(home).not.toBeNull()
     expect(home!.textContent).toBe('Home')
     act(() => (home as HTMLElement).click())
-    expect(rowText()).toEqual(['Roadmap1', 'Courier1'])
+    expect(rowText()).toEqual(['Kehikot1', 'Courier1'])
   })
 
   test('nothing is marked on arrival', async () => {
     await mappedPage()
-    press('Roadmap')
+    press('Kehikot')
     /*
      * Choosing an epic asks the host to MOVE, so a row that arrived marked
      * would be this page claiming somebody is somewhere they are not.
@@ -629,7 +629,7 @@ describe('the compact form, in a pane too narrow for a map', () => {
 
   test('pressing an epic asks the host to move, once, naming that epic', async () => {
     const { sent } = await mappedPage()
-    press('Roadmap')
+    press('Kehikot')
     const before = sent.filter((m: any) => m.type === MESSAGE.REQUEST).length
     press('Off means off')
 
@@ -642,7 +642,7 @@ describe('the compact form, in a pane too narrow for a map', () => {
 
   test('a host with no such method leaves the rows unpressable and says why, in its words', async () => {
     const { sent, fromHost } = await mappedPage()
-    press('Roadmap')
+    press('Kehikot')
 
     const said = () =>
       [...compact().querySelectorAll('p')].map((p) => (p.textContent ?? '').trim())
@@ -779,8 +779,8 @@ describe('the compact form, in a pane too narrow for a map', () => {
 describe('the short form, in a pane with no height', () => {
   const answer = {
     epics: [
-      { slug: 'off-means-off', title: 'Off means off', project: 'Roadmap', steps: 9 },
-      { slug: 'a-green-gate', title: 'A green gate', project: 'Roadmap' },
+      { slug: 'off-means-off', title: 'Off means off', project: 'Kehikot', steps: 9 },
+      { slug: 'a-green-gate', title: 'A green gate', project: 'Kehikot' },
       { slug: 'the-lone-one', title: 'The lone one', project: 'Courier' },
     ],
   }
@@ -871,14 +871,14 @@ describe('the short form, in a pane with no height', () => {
   })
 
   test('the epic picker holds what the HOST says is open, and pressing does not set it', async () => {
-    await mappedPage({ epic: 'off-means-off', project: 'Roadmap', theme: 'light' })
+    await mappedPage({ epic: 'off-means-off', project: 'Kehikot', theme: 'light' })
 
     expect(chip('Off means off')!.getAttribute('aria-current')).toBe('page')
     expect(chip('A green gate')!.getAttribute('aria-current')).toBeNull()
 
     /*
      * Pressing asks the host to move; it does not mark anything. The marker is
-     * where `roadmap.context` says the reader is, which is the only source for
+     * where `kehikot.context` says the reader is, which is the only source for
      * where anybody actually ended up — the same rule the cards and the rows
      * follow, applied to a control that has somewhere to put a value. This is
      * the whole of why a select is safe here where the first build's pair was
@@ -975,8 +975,8 @@ describe('the short form, in a pane with no height', () => {
 describe('the short form’s prose, and where it went', () => {
   const answer = {
     epics: [
-      { slug: 'off-means-off', title: 'Off means off', project: 'Roadmap', steps: 9 },
-      { slug: 'a-green-gate', title: 'A green gate', project: 'Roadmap' },
+      { slug: 'off-means-off', title: 'Off means off', project: 'Kehikot', steps: 9 },
+      { slug: 'a-green-gate', title: 'A green gate', project: 'Kehikot' },
     ],
   }
 
@@ -986,7 +986,7 @@ describe('the short form’s prose, and where it went', () => {
   async function mapped() {
     const { sent, fromHost } = frameIt()
     render(<App />)
-    fromHost({ ...hello, context: { epic: null, project: 'Roadmap', theme: 'light' } })
+    fromHost({ ...hello, context: { epic: null, project: 'Kehikot', theme: 'light' } })
     await waitFor(() => expect(sent.some((m) => m.type === MESSAGE.REQUEST)).toBe(true))
     fromHost({
       type: MESSAGE.RESPONSE,

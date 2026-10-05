@@ -23,8 +23,8 @@ function epic(slug: string, project: string | null, title: string | null = slug)
 }
 
 const EPICS = [
-  epic('off-means-off', 'Roadmap', 'Off means off'),
-  epic('a-green-gate', 'Roadmap', 'A green gate'),
+  epic('off-means-off', 'Kehikot', 'Off means off'),
+  epic('a-green-gate', 'Kehikot', 'A green gate'),
   epic('the-lone-one', 'Courier', 'The lone one'),
   epic('unfiled', null, 'Filed under nothing'),
 ]
@@ -63,8 +63,8 @@ describe('which of the two screens the drill-down is on', () => {
 
   test('drilling in scopes the list to the project that was pressed', () => {
     const territory = intoProjects(EPICS, { epic: null, project: 'Courier' })
-    const place = placeShown(territory, { at: 'epics', project: { name: 'Roadmap' } })
-    expect(at(place)).toBe('Roadmap')
+    const place = placeShown(territory, { at: 'epics', project: { name: 'Kehikot' } })
+    expect(at(place)).toBe('Kehikot')
     expect(place.at === 'epics' && place.project.epics.map((e) => e.slug)).toEqual([
       'off-means-off',
       'a-green-gate',
@@ -88,7 +88,7 @@ describe('which of the two screens the drill-down is on', () => {
      * Reachable: the reader drills into a project, presses "ask again", and the
      * new answer no longer names it. Falling back to a neighbour — which the
      * two selects did, because a select must display something — would leave
-     * the breadcrumb reading `Home / Courier` for a reader who chose Roadmap.
+     * the breadcrumb reading `Home / Courier` for a reader who chose Kehikot.
      */
     const territory = intoProjects(EPICS, { epic: null, project: 'Courier' })
     const place = placeShown(territory, {
@@ -105,7 +105,7 @@ describe('which of the two screens the drill-down is on', () => {
      * while the breadcrumb went on reading the same word.
      */
     const reordered = intoProjects([EPICS[2]!, EPICS[0]!, EPICS[1]!])
-    expect(at(placeShown(reordered, { at: 'epics', project: { name: 'Roadmap' } }))).toBe('Roadmap')
+    expect(at(placeShown(reordered, { at: 'epics', project: { name: 'Kehikot' } }))).toBe('Kehikot')
   })
 })
 
@@ -120,7 +120,7 @@ describe('which epic the form marks, and which it does not', () => {
      * to MOVE, so a row that arrived already marked would be claiming the
      * reader is somewhere they are not.
      */
-    expect(openEpic(of('Roadmap'), territory.reading)).toBeNull()
+    expect(openEpic(of('Kehikot'), territory.reading)).toBeNull()
   })
 
   test('except the one the host itself reports as open', () => {
@@ -128,7 +128,7 @@ describe('which epic the form marks, and which it does not', () => {
   })
 
   test('and that mark does not travel into a project it does not belong to', () => {
-    expect(openEpic(of('Roadmap'), 'the-lone-one')).toBeNull()
+    expect(openEpic(of('Kehikot'), 'the-lone-one')).toBeNull()
   })
 
   test('a host that named no open epic marks nothing at all', () => {
@@ -148,7 +148,7 @@ describe('what the form says about what choosing does', () => {
   })
 
   test('the host’s own reason is preferred over anything written here', () => {
-    const host = 'the roadmap is mid-migration and moving would land the reader nowhere'
+    const host = 'the workspace is mid-migration and moving would land the reader nowhere'
     expect(choosingDoes(false, host)).toBe(host)
   })
 

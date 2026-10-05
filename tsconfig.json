@@ -16,7 +16,7 @@
     "baseUrl": ".",
     "paths": {
       "@/*": ["./page/*"]
-      // `roadmap-module-protocol` was mapped here to its source in the
+      // `kehikot-module-protocol` was mapped here to its source in the
       // repository this app used to share with it. It is a separate repository
       // now and an ordinary dependency, resolved by name with no mapping —
       // which is what the fix to that package's own `exports` bought. The long

@@ -69,7 +69,7 @@ describe('one entry', () => {
       slug: 'off-means-off',
       title: 'Off means off',
       lede: 'A switch that is off does nothing at all.',
-      project: 'Roadmap',
+      project: 'Kehikot',
       steps: 9,
     })
     expect(read).toEqual({
@@ -77,7 +77,7 @@ describe('one entry', () => {
         slug: 'off-means-off',
         title: 'Off means off',
         lede: 'A switch that is off does nothing at all.',
-        project: 'Roadmap',
+        project: 'Kehikot',
         size: 9,
         unread: [],
       },

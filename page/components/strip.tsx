@@ -62,7 +62,7 @@ import {
  * exactly the height this layout exists to save; a row of epics that wraps has
  * only used the width it was given.
  *
- * The number: against the harness's ordinary roadmap — five projects, names of
+ * The number: against the harness's ordinary workspace — five projects, names of
  * 5 to 9 characters — the items measure 51, 60, 66, 72 and 83 pixels, so with
  * their gaps the row is 348 wide, and with the 48-pixel label, its gap and the
  * strip's padding it needs exactly 420. Measured at 410 the row is on two lines
@@ -309,7 +309,7 @@ export function Strip({
                     The marker is the host's. `aria-current="page"` rather than
                     `aria-pressed`, because this is not a toggle the reader set
                     — it is where the canvas is standing, and it moves when
-                    `roadmap.context` says the reader moved and at no other
+                    `kehikot.context` says the reader moved and at no other
                     time.
                   */
                   current={open !== null && open.slug === epic.slug}

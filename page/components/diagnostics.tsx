@@ -1,5 +1,5 @@
 import { ChevronRight } from 'lucide-react'
-import type { ModuleContext } from 'roadmap-module-protocol'
+import type { ModuleContext } from 'kehikot-module-protocol'
 import type { Territory } from '../../atlas/grouping.ts'
 import { GET_EPIC, GOTO, LIST_EPICS } from '../../atlas/methods.ts'
 import type { Reading } from '../../atlas/reading.ts'

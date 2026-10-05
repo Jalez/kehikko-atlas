@@ -47,7 +47,7 @@ export interface Attached {
    * returned.
    *
    * That failed in a way worth recognising, because both halves looked
-   * healthy: the greeting was answered — `Connection` sends `roadmap.ready`
+   * healthy: the greeting was answered — `Connection` sends `kehikot.ready`
    * itself and needs nobody's ref to do it — so the HOST saw a module that was
    * ready and speaking, while the module's own screen still read "something is
    * framing this page and has not said hello". Nothing errored, and the one

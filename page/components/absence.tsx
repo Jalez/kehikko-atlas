@@ -34,7 +34,7 @@ export function Absence({ situation, again }: { situation: Situation; again: (()
           {said.headline}
         </CardTitle>
         <CardDescription className="sr-only">
-          Why this is not the same as an empty roadmap
+          Why this is not the same as an empty workspace
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4 px-4 @sm/page:px-6">

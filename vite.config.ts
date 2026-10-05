@@ -2,6 +2,8 @@ import { fileURLToPath } from 'node:url'
 import tailwindcss from '@tailwindcss/vite'
 import react from '@vitejs/plugin-react'
 import { defineConfig, type Plugin } from 'vite'
+import { LEGACY_WELL_KNOWN, WELL_KNOWN, legacyManifest } from 'kehikot-module-protocol'
+import { frameAncestors } from 'kehikot-module-protocol/serve'
 import { MANIFEST } from './manifest.ts'
 
 /**
@@ -25,9 +27,11 @@ function doors(): Plugin {
     configureServer(server) {
       server.middlewares.use((request, response, next) => {
         const path = (request.url ?? '').split('?')[0]
-        if (path === '/.well-known/roadmap-module.json') {
+        if (path === WELL_KNOWN || path === LEGACY_WELL_KNOWN) {
           response.setHeader('content-type', 'application/json; charset=utf-8')
-          response.end(JSON.stringify(MANIFEST, null, 2))
+          /* The same manifest in the spelling a host from before the rename
+             asks for, so that host still finds this module. */
+          response.end(JSON.stringify(path === WELL_KNOWN ? MANIFEST : legacyManifest(MANIFEST), null, 2))
           return
         }
         if (path === '/healthz') {
@@ -54,6 +58,9 @@ function doors(): Plugin {
          * longer depends on which files happen to sit next to it.
          */
         if (path === '/app' || path === '/app/') {
+          /* Framed by a host and by nothing else: `KEHIKOT_ORIGIN` or the
+             older `ROADMAP_ORIGIN`, else every origin a host here serves from. */
+          response.setHeader('content-security-policy', frameAncestors())
           request.url = '/index.html'
           next()
           return
@@ -117,7 +124,7 @@ export default defineConfig({
     alias: {
       '@': here('./page'),
       /*
-       * `roadmap-module-protocol` used to be aliased here, to its source in the
+       * `kehikot-module-protocol` used to be aliased here, to its source in the
        * repository this app used to live in. Both halves of that are gone: the
        * protocol is its own repository now, and it is resolved by name like any
        * other dependency. See PACKAGING.md there for why it had to be reached

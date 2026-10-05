@@ -1,9 +1,9 @@
 {
-  "name": "roadmap-atlas",
+  "name": "kehikot-atlas",
   "version": "1.0.0",
   "private": true,
   "type": "module",
-  "description": "A map of the territory: which projects exist, and which epics belong to each. Its own program — a page, a manifest and a server — which a roadmap host may frame, and which runs and says something honest when nothing does.",
+  "description": "A map of the territory: which projects exist, and which epics belong to each. Its own program — a page, a manifest and a server — which a Kehikot host may frame, and which runs and says something honest when nothing does.",
   "scripts": {
     "build": "vite build",
     "start": "bun run server.ts",
@@ -20,7 +20,7 @@
     "lucide-react": "^0.544.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
-    "roadmap-module-protocol": "git+ssh://git@github.com/Jalez/kehikko-protocol.git#main",
+    "kehikot-module-protocol": "git+ssh://git@github.com/Jalez/kehikko-protocol.git#main",
     "tailwind-merge": "^3.6.0",
     "zod": "^3.25.76"
   },

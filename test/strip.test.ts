@@ -32,19 +32,19 @@ function epic(slug: string, project: string | null, title: string | null = slug)
 }
 
 const EPICS = [
-  epic('off-means-off', 'Roadmap', 'Off means off'),
-  epic('a-green-gate', 'Roadmap', 'A green gate'),
+  epic('off-means-off', 'Kehikot', 'Off means off'),
+  epic('a-green-gate', 'Kehikot', 'A green gate'),
   epic('the-lone-one', 'Courier', 'The lone one'),
   epic('unfiled', null, 'Filed under nothing'),
 ]
 
 const TERRITORY = intoProjects(EPICS)
-const roadmap = TERRITORY.projects.find((p) => p.name === 'Roadmap')!
+const kehikot = TERRITORY.projects.find((p) => p.name === 'Kehikot')!
 const unfiled = TERRITORY.projects.find((p) => p.name === null)!
 
 describe('a project name as a value a select can carry', () => {
   test('a named project round-trips', () => {
-    expect(projectNamed(projectValue('Roadmap'))).toBe('Roadmap')
+    expect(projectNamed(projectValue('Kehikot'))).toBe('Kehikot')
   })
 
   test('the unfiled group round-trips as null, which is a project and not an absence', () => {
@@ -77,8 +77,8 @@ describe('a project name as a value a select can carry', () => {
 
   test('a value this app did not write is refused rather than guessed at', () => {
     expect(projectNamed('')).toBeUndefined()
-    expect(projectNamed('Roadmap')).toBeUndefined()
-    expect(projectNamed('x:Roadmap')).toBeUndefined()
+    expect(projectNamed('Kehikot')).toBeUndefined()
+    expect(projectNamed('x:Kehikot')).toBeUndefined()
   })
 
   test('a name with the prefix inside it comes back whole', () => {
@@ -120,7 +120,7 @@ describe('which project the first picker is showing', () => {
 
 describe('the epic picker holds a fact, never a pick', () => {
   test('its value is the epic the host says is open', () => {
-    expect(openEpicValue(roadmap, 'off-means-off')).toBe('off-means-off')
+    expect(openEpicValue(kehikot, 'off-means-off')).toBe('off-means-off')
   })
 
   test('undefined where the host names none, so the control reads as unset', () => {
@@ -128,13 +128,13 @@ describe('the epic picker holds a fact, never a pick', () => {
      * Not `''`. Radix reads the empty string as an instruction to clear and
      * `undefined` as no value, and only the second draws the placeholder.
      */
-    expect(openEpicValue(roadmap, null)).toBeUndefined()
+    expect(openEpicValue(kehikot, null)).toBeUndefined()
   })
 
   test('an epic open in another project marks nothing here', () => {
     // The marker means "this is the one you are looking at", which is false of
     // every row in a project the reader is not in.
-    expect(openEpicValue(roadmap, 'the-lone-one')).toBeUndefined()
+    expect(openEpicValue(kehikot, 'the-lone-one')).toBeUndefined()
   })
 
   test('no project picked is no value, not the first epic of anything', () => {
@@ -144,19 +144,19 @@ describe('the epic picker holds a fact, never a pick', () => {
 
 describe('what the pickers are called', () => {
   test('an epic with no title is named by its slug, never "Untitled"', () => {
-    expect(epicLabel(epic('a-slug', 'Roadmap', null))).toBe('a-slug')
+    expect(epicLabel(epic('a-slug', 'Kehikot', null))).toBe('a-slug')
   })
 
   test('a project with no name is not given one', () => {
     expect(projectLabel(unfiled)).toBe('no project named')
-    expect(projectLabel(roadmap)).toBe('Roadmap')
+    expect(projectLabel(kehikot)).toBe('Kehikot')
   })
 
   test('the three things the epic picker can be holding nothing for are three sentences', () => {
     const said = [
       epicPrompt(null),
       epicPrompt({ name: 'Empty', epics: [], onlyFromContext: true }),
-      epicPrompt(roadmap),
+      epicPrompt(kehikot),
     ]
     expect(new Set(said).size).toBe(3)
     expect(said[0]).toContain('project')

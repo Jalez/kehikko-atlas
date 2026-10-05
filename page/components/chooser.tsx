@@ -272,7 +272,7 @@ export function Chooser({
  * instead of telling them the true and more useful thing, which is that there is
  * nobody here to ask.
  *
- * The marker is the host's and not this row's. Pressing asks; `roadmap.context`
+ * The marker is the host's and not this row's. Pressing asks; `kehikot.context`
  * says where the reader actually ended up; nothing here moves its own "open"
  * badge on the strength of having been pressed.
  */

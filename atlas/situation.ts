@@ -6,7 +6,7 @@ import { LIST_EPICS } from './methods.ts'
  *
  * ## Why "nothing has told me" is a separate state from "there is nothing"
  *
- * Atlas holds no roadmap. It has no store, no seed, no cache; every project and
+ * Atlas holds no workspace. It has no store, no seed, no cache; every project and
  * every epic it draws came out of a host's answer to one call. That makes the
  * empty screen the most dangerous screen in the app, because the same blank
  * space is the honest rendering of at least six different facts:
@@ -35,7 +35,7 @@ import { LIST_EPICS } from './methods.ts'
 export type Situation =
   /** No host: `window.parent === window`. The page is running as its own program. */
   | { kind: 'unframed' }
-  /** Framed, and `roadmap.hello` has not arrived. */
+  /** Framed, and `kehikot.hello` has not arrived. */
   | { kind: 'ungreeted' }
   /** Greeted; the question is in flight. */
   | { kind: 'asked' }
@@ -76,7 +76,7 @@ export function words(situation: Situation): Words {
     return {
       headline: 'Nothing has told this app anything.',
       body:
-          'Atlas holds no roadmap of its own. It keeps no copy, reads no repository and talks to no tracker — it draws what a host answers, and this page was opened on its own, so nothing has been asked and nothing has answered. What you are looking at is not a roadmap with no projects in it. It is a roadmap nobody has described yet.',
+          'Atlas holds no workspace of its own. It keeps no copy, reads no repository and talks to no tracker — it draws what a host answers, and this page was opened on its own, so nothing has been asked and nothing has answered. What you are looking at is not a workspace with no projects in it. It is a workspace nobody has described yet.',
     }
   case 'ungreeted':
     return {
@@ -108,7 +108,7 @@ export function words(situation: Situation): Words {
     return {
       headline: 'The host answered: it has no epics yet.',
       body:
-          'This is the one screen in this app that really does mean there is nothing. Atlas asked which epics exist, the host answered, and it named none. An empty roadmap is a roadmap somebody has described.',
+          'This is the one screen in this app that really does mean there is nothing. Atlas asked which epics exist, the host answered, and it named none. An empty workspace is a workspace somebody has described.',
     }
   case 'mapped':
     return {
@@ -132,7 +132,7 @@ export function situationOf(reading: Reading): Situation {
     /**
      * An answer that offered entries and yielded none is unreadable, not empty.
      * The host clearly has something; this app could not read any of it, and
-     * saying "no epics yet" here would be blaming the roadmap for a failure on
+     * saying "no epics yet" here would be blaming the workspace for a failure on
      * this side of the frame.
      */
     return reading.offered > 0 ? { kind: 'unreadable', reading } : { kind: 'none' }

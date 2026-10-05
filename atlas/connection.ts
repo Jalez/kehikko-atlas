@@ -1,10 +1,13 @@
 import {
+  type Dialect,
   MESSAGE,
   type ModuleContext,
   clampHeight,
+  dialectOfType,
   hostMessageSchema,
   looksLikeWireMessage,
-} from 'roadmap-module-protocol'
+  toDialect,
+} from 'kehikot-module-protocol'
 
 /**
  * The four things this app is allowed to say, and everything it does with what
@@ -45,7 +48,7 @@ import {
  * this side cannot verify at all. There is no check available here that would
  * be an identity check, so there is none here pretending to be one. What
  * protects this app is that it holds nothing worth taking: no credential, no
- * store, no write path. A forged `roadmap.context` can make this page highlight
+ * store, no write path. A forged `kehikot.context` can make this page highlight
  * the wrong row, and that is the whole of the damage.
  */
 
@@ -80,7 +83,7 @@ export const PATIENCE = 10_000
 type Cancel = () => void
 
 export interface ConnectionOptions {
-  /** This module's own id, sent in `roadmap.ready` so a host can confirm what it framed. */
+  /** This module's own id, sent in `kehikot.ready` so a host can confirm what it framed. */
   moduleId: string
   /** Post one message to the host. */
   send: (message: unknown) => void
@@ -154,6 +157,15 @@ export class Connection {
   private readonly waiting = new Map<string, { settle: (answer: Answer) => void; cancel: Cancel }>()
 
   private greeted = false
+
+  /**
+   * The spelling the host speaks, learned from what it says. A host from before
+   * the rename greets with `roadmap.hello` and only understands `roadmap.ready`
+   * back; a current one speaks `kehikot.`. Everything this app sends is
+   * respelled at the moment it is posted (`post`), so nothing else here knows
+   * there are two.
+   */
+  private dialect: Dialect = 'kehikot'
   private lastHeight = 0
 
   constructor(options: ConnectionOptions) {
@@ -169,11 +181,16 @@ export class Connection {
     this.correlate = options.correlate ?? (() => `atlas-${Math.random().toString(36).slice(2, 12)}`)
   }
 
+  /** Post one message, in the dialect the host has been speaking. */
+  private post(message: unknown): void {
+    this.send(toDialect(message, this.dialect))
+  }
+
   on(events: ConnectionEvents): void {
     this.events = events
   }
 
-  /** Whether `roadmap.hello` has been heard. The page draws a different screen before it. */
+  /** Whether `kehikot.hello` has been heard. The page draws a different screen before it. */
   get hasBeenGreeted(): boolean {
     return this.greeted
   }
@@ -191,6 +208,7 @@ export class Connection {
    */
   receive(data: unknown): Received {
     if (!looksLikeWireMessage(data)) return 'not-ours'
+    this.dialect = dialectOfType((data as { type?: unknown }).type) ?? this.dialect
 
     const parsed = hostMessageSchema.safeParse(data)
     if (!parsed.success) return 'malformed'
@@ -207,7 +225,7 @@ export class Connection {
        * this module went silent.
        */
       this.greeted = true
-      this.send({ type: MESSAGE.READY, id: this.moduleId, protocol: message.protocol })
+      this.post({ type: MESSAGE.READY, id: this.moduleId, protocol: message.protocol })
       this.events.onHello?.(message.context, message.protocol, message.session, message.state)
       this.events.onContext?.(message.context)
       return 'hello'
@@ -278,7 +296,7 @@ export class Connection {
        * says the host may show it, and "this module draws no references" is a
        * better thing for somebody to read than a blank.
        */
-      this.send({
+      this.post({
         type: MESSAGE.WENT,
         id: message.id,
         found: false,
@@ -302,6 +320,18 @@ export class Connection {
        * it. That is the behaviour worth keeping: the next message the protocol
        * adds should stop this file compiling and make somebody decide, rather
        * than falling into a silent default that swallows it.
+       */
+      return 'ignored'
+    }
+    case MESSAGE.CLEAR:
+    case MESSAGE.REFRESH: {
+      /**
+       * Ignored, for the same reason as `event`: these two are asked of a module
+       * that said it can be cleared (`clearable`) or refreshed (`refreshable`),
+       * and this app says neither — it holds nothing to clear and nothing to
+       * re-read, because everything it draws is a host's answer. A conforming
+       * host never sends them here. They are written out so that the switch
+       * stays exhaustive over the host messages.
        */
       return 'ignored'
     }
@@ -332,7 +362,7 @@ export class Connection {
         })
       }, this.patience)
       this.waiting.set(id, { settle: resolve, cancel })
-      this.send({ type: MESSAGE.REQUEST, id, method, params })
+      this.post({ type: MESSAGE.REQUEST, id, method, params })
     })
   }
 
@@ -352,6 +382,6 @@ export class Connection {
     const asked = clampHeight(height)
     if (asked === this.lastHeight) return
     this.lastHeight = asked
-    this.send({ type: MESSAGE.RESIZE, height: asked })
+    this.post({ type: MESSAGE.RESIZE, height: asked })
   }
 }

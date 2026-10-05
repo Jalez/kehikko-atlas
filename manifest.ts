@@ -1,7 +1,7 @@
-import { MANIFEST_KIND, METHODS, PROTOCOL, manifestSchema, own } from 'roadmap-module-protocol'
+import { MANIFEST_KIND, METHODS, PROTOCOL, manifestSchema, own } from 'kehikot-module-protocol'
 import { GET_EPIC, GOTO, KEEP_STATE, LIST_EPICS } from './atlas/methods.ts'
 
-export const ID = 'roadmap.atlas'
+export const ID = 'kehikot.atlas'
 export const VERSION = '1.0.0'
 
 /**
@@ -56,11 +56,11 @@ export const VERSION = '1.0.0'
  * ## The mode, and why its scope is `epic` when the page is about all of them
  *
  * One mode, and it looks like it should be `global`: Atlas draws every project
- * and every epic, and `global` is the scope for a page over the whole roadmap.
+ * and every epic, and `global` is the scope for a page over the whole workspace.
  *
  * It is `epic`, which means "follows the reader — told which epic is open, and
  * told again on every switch". The difference is the marker. A `global` mode is
- * never sent `roadmap.context`, so a map with `global` scope could show
+ * never sent `kehikot.context`, so a map with `global` scope could show
  * everything and never show WHERE YOU ARE, and would go on not showing it as
  * the reader moved around. Being told costs one message per switch and is the
  * difference between a map and a map with a pin in it.

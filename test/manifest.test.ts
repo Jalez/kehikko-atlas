@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test'
-import { MANIFEST_KIND, METHOD_NAMES, PROTOCOL, manifestSchema, speaks } from 'roadmap-module-protocol'
+import { MANIFEST_KIND, METHOD_NAMES, PROTOCOL, manifestSchema, speaks } from 'kehikot-module-protocol'
 import { MANIFEST } from '../manifest.ts'
 import { GET_EPIC, LIST_EPICS } from '../atlas/methods.ts'
 

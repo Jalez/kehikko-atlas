@@ -1,4 +1,4 @@
-import { EPIC_SLUG, LIMITS, epicsListResult } from 'roadmap-module-protocol'
+import { EPIC_SLUG, LIMITS, epicsListResult } from 'kehikot-module-protocol'
 
 /**
  * Reading an answer whose shape is only half promised.
@@ -243,7 +243,7 @@ const WRAPPERS = ['epics', 'items', 'journeys']
  * Never throws. Everything that could have gone wrong comes back on the
  * `Reading` as something the page can put into a sentence, because the one
  * outcome worse than an unreadable answer is an unreadable answer drawn as an
- * empty roadmap.
+ * empty workspace.
  */
 export function readEpics(data: unknown): Reading {
   let list: unknown[] | null = null

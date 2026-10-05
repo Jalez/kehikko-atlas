@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import type { ModuleContext } from 'roadmap-module-protocol'
+import type { ModuleContext } from 'kehikot-module-protocol'
 import type { Connection } from '../atlas/connection.ts'
 import { PATIENCE } from '../atlas/connection.ts'
 import { type Territory, intoProjects } from '../atlas/grouping.ts'
@@ -206,7 +206,7 @@ export function useAtlas(): Atlas {
    * page draws the reason rather than a dead button.
    *
    * Nothing here marks the epic as open on success. `moved` is a promise that a
-   * `roadmap.context` follows, and the context is what this app draws from — a
+   * `kehikot.context` follows, and the context is what this app draws from — a
    * page that moved its own marker on the strength of the acknowledgement would
    * be drawing where it ASKED to be rather than where the reader is, and would
    * be wrong for as long as it took the host to disagree.
