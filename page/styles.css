@@ -14,7 +14,7 @@
  * rather than an archaeology of overrides.
  *
  * Dark mode is on a class rather than only on `prefers-color-scheme`, because
- * the host TELLS this app which theme it is in — `roadmap.context` carries
+ * the host TELLS this app which theme it is in — `kehikot.context` carries
  * `theme` — and the reader's operating system is not the authority on what the
  * page around this frame looks like. `page/app.tsx` sets the class from the
  * context. Standalone, with nobody to say, the media query below is the
@@ -70,7 +70,7 @@
  * The bound is where the drill-down — the taller of the two existing forms, and
  * the one a short pane falls to at narrow widths — stops being able to show
  * anything to choose from. Measured in a browser against the harness's ordinary
- * roadmap: the trail is 16 pixels, a row is 36 with a 4-pixel gap between rows,
+ * workspace: the trail is 16 pixels, a row is 36 with a 4-pixel gap between rows,
  * and the trail's gap plus the page's own padding is 36. So the trail and four
  * rows come to 208, five to 248, and six to 288.
  *

@@ -74,7 +74,7 @@ import type { Words } from './situation.ts'
  * as open, and that one is a fact rather than a guess. `openEpic` is the whole of
  * it, and it will not fall back to the first epic in a project. It is the same
  * rule `epic-card.tsx` states for the wide map — a card never moves its own
- * marker; it asks, and `roadmap.context` says where anybody actually ended up.
+ * marker; it asks, and `kehikot.context` says where anybody actually ended up.
  *
  * Which LEVEL the form opens on is a different question, because moving between
  * levels asks nobody anything. It opens inside the project the host says the
@@ -131,7 +131,7 @@ export type Place = { at: 'projects' } | { at: 'epics'; project: Project }
  * reader is standing. That is a change from the two selects, which fell back to
  * the standing project, and the breadcrumb is the reason: a select showing a
  * project the reader did not pick is a control with a surprising value in it,
- * but a crumb reading `Home / Courier` when the reader drilled into Roadmap is
+ * but a crumb reading `Home / Courier` when the reader drilled into Kehikot is
  * this page stating, in the one place on screen reserved for saying where you
  * are, something that is not true. The project list is the one screen that
  * cannot be wrong about that.
@@ -161,7 +161,7 @@ export function placeShown(territory: Territory, chosen: Chosen | null): Place {
  * `reading` is the slug the host reported as open, already matched against this
  * answer by `intoProjects` — so it is a fact rather than a hope. It is the only
  * thing allowed to mark a row unasked, and the mark does not travel: an epic
- * open in Courier marks nothing while the reader is looking at Roadmap, because
+ * open in Courier marks nothing while the reader is looking at Kehikot, because
  * the marker means "this is the one you are looking at" and that is false of
  * every row in a project the reader is not in.
  */

@@ -1,5 +1,5 @@
 import { ChevronRight } from 'lucide-react'
-import { MODULE_MESSAGES } from 'roadmap-module-protocol'
+import { MODULE_MESSAGES } from 'kehikot-module-protocol'
 import { GOTO } from '../../atlas/methods.ts'
 
 /**
@@ -38,7 +38,7 @@ export function Travel({ canAsk, reason }: { canAsk: boolean; reason: string | n
             the host decides. It may move, it may decline, or it may say there is nothing by that
             name; all three come back as a successful call with a different answer inside, and the
             page says which. Nothing here marks an epic as open on its own: the marker moves when{' '}
-            <code className="font-mono">roadmap.context</code> says the reader moved, which is the
+            <code className="font-mono">kehikot.context</code> says the reader moved, which is the
             only source for where anybody actually is.
           </p>
         </details>
@@ -92,8 +92,8 @@ export function Travel({ canAsk, reason }: { canAsk: boolean; reason: string | n
         <div className="mt-3 space-y-3">
           <p className="text-pretty">
             The protocol already had this in one direction:{' '}
-            <code className="font-mono">roadmap.goto</code> asks a module to walk its reader
-            somewhere, and <code className="font-mono">roadmap.went</code> answers whether the walk
+            <code className="font-mono">kehikot.goto</code> asks a module to walk its reader
+            somewhere, and <code className="font-mono">kehikot.went</code> answers whether the walk
             found anything. What was missing was the mirror.
           </p>
           {/*

@@ -52,7 +52,7 @@ import type { Epic } from './reading.ts'
  * - The EPIC picker's value is not held at all. It is `openEpic` — the epic the
  *   HOST says is open, matched against the project on screen — and choosing one
  *   does not set it. Choosing asks the host to move, and the value changes if
- *   and when `roadmap.context` says the reader ended up somewhere. So there is
+ *   and when `kehikot.context` says the reader ended up somewhere. So there is
  *   no second pick to go stale when the first one changes; there is a fact,
  *   which is re-derived from the new project like everything else on the page.
  *

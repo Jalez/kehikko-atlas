@@ -2,7 +2,8 @@
 import { existsSync } from 'node:fs'
 import { dirname, join, normalize } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { WELL_KNOWN } from 'roadmap-module-protocol'
+import { LEGACY_WELL_KNOWN, WELL_KNOWN, legacyManifest } from 'kehikot-module-protocol'
+import { frameAncestors } from 'kehikot-module-protocol/serve'
 import { ID, MANIFEST, VERSION } from './manifest.ts'
 
 /**
@@ -12,7 +13,8 @@ import { ID, MANIFEST, VERSION } from './manifest.ts'
  *
  * One server with three doors and no store behind any of them:
  *
- *  - `/.well-known/roadmap-module.json`, the only path a host ever asks for and
+ *  - `/.well-known/kehikot-module.json` (and the pre-rename `roadmap-module.json`,
+ *    the same manifest spelled for an older host), the only path a host ever asks for and
  *    the whole reason a host can find this at all;
  *  - `/app`, a page fit to be framed and equally fit to be opened directly;
  *  - `/healthz`, so that "not running" and "broken" can be different words on
@@ -50,6 +52,9 @@ const PORT = Number(process.env.PORT ?? 7830)
 
 /** The manifest, serialised once. It cannot change while the process is alive. */
 const MANIFEST_JSON = JSON.stringify(MANIFEST, null, 2)
+
+/** The same manifest in the spelling a host from before the rename asks for. */
+const LEGACY_MANIFEST_JSON = JSON.stringify(legacyManifest(MANIFEST), null, 2)
 
 /**
  * Serve one file out of the build, or nothing.
@@ -94,6 +99,8 @@ function page(): Response {
     headers: {
       'content-type': 'text/html; charset=utf-8',
       'cache-control': 'no-store',
+      /* Framed by a host and by nothing else. */
+      'content-security-policy': frameAncestors(),
     },
   })
 }
@@ -109,8 +116,8 @@ const server = Bun.serve({
      * answer out of a cache would let a module that has been replaced keep
      * describing itself as the old one.
      */
-    if (pathname === WELL_KNOWN) {
-      return new Response(MANIFEST_JSON, {
+    if (pathname === WELL_KNOWN || pathname === LEGACY_WELL_KNOWN) {
+      return new Response(pathname === WELL_KNOWN ? MANIFEST_JSON : LEGACY_MANIFEST_JSON, {
         headers: { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' },
       })
     }

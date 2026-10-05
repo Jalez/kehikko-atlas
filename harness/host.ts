@@ -17,7 +17,7 @@
  * are the ones where the host is unhelpful, and a harness that only ever
  * behaves well would exercise the one screen that needed the least care.
  */
-import { WELL_KNOWN } from 'roadmap-module-protocol'
+import { MESSAGE, MESSAGE_PREFIX, WELL_KNOWN } from 'kehikot-module-protocol'
 
 const PORT = Number(process.env.PORT ?? 7831)
 const MODULE = process.env.MODULE ?? 'http://localhost:7830'
@@ -41,7 +41,7 @@ const PAGE = /* html */ `<!doctype html>
 <aside>
   <h1>Stub host</h1>
   <fieldset><legend>answer to the list</legend>
-    <button data-answer="full">a full roadmap (5 projects, 27 epics)</button>
+    <button data-answer="full">a full workspace (5 projects, 27 epics)</button>
     <button data-answer="lopsided">one project of 15, four of one</button>
     <button data-answer="messy">half-readable: bad slugs, missing fields</button>
     <button data-answer="cruel">names too long for any pane</button>
@@ -62,7 +62,7 @@ const PAGE = /* html */ `<!doctype html>
     <button id="theme">toggle theme</button>
     <button id="ghost">say the reader is in a project with no epics</button>
     <button id="narrow">toggle a narrow column</button>
-    <button id="goto">send a roadmap.goto</button>
+    <button id="goto">send a goto</button>
   </fieldset>
   <div id="log"></div>
 </aside>
@@ -73,9 +73,9 @@ const log = (...a) => { document.getElementById('log').textContent = a.join(' ')
 
 let answer = 'full'
 let theme = 'light'
-let context = { epic: 'off-means-off', project: 'Roadmap', theme }
+let context = { epic: 'off-means-off', project: 'Kehikot', theme }
 
-const PROJECTS = ['Roadmap', 'Courier', 'Protocol', 'Workbench', 'Paper']
+const PROJECTS = ['Kehikot', 'Courier', 'Protocol', 'Workbench', 'Paper']
 const make = (n, project) => Array.from({ length: n }, (_, i) => ({
   slug: (project.toLowerCase() + '-' + (i + 1)).replace(/[^a-z0-9-]/g, '-'),
   title: project + ' epic ' + (i + 1),
@@ -86,16 +86,16 @@ const make = (n, project) => Array.from({ length: n }, (_, i) => ({
 
 const ANSWERS = {
   full: () => ({ epics: [
-    ...make(9, 'Roadmap'), ...make(6, 'Courier'), ...make(7, 'Protocol'),
+    ...make(9, 'Kehikot'), ...make(6, 'Courier'), ...make(7, 'Protocol'),
     ...make(4, 'Workbench'), ...make(1, 'Paper'),
   ].map((e, i) => (i % 5 === 4 ? { ...e, lede: undefined, steps: undefined } : e)) }),
   lopsided: () => ({ epics: [
-    ...make(15, 'Roadmap'), ...make(1, 'Courier'), ...make(1, 'Protocol'),
+    ...make(15, 'Kehikot'), ...make(1, 'Courier'), ...make(1, 'Protocol'),
     ...make(1, 'Workbench'), ...make(1, 'Paper'),
   ] }),
   messy: () => ({ epics: [
-    { slug: 'off-means-off', title: 'Off means off', project: 'Roadmap', steps: 9 },
-    { title: 'no slug at all', project: 'Roadmap' },
+    { slug: 'off-means-off', title: 'Off means off', project: 'Kehikot', steps: 9 },
+    { title: 'no slug at all', project: 'Kehikot' },
     { slug: 'NOT A SLUG', title: 'bent out of shape' },
     'a string where an epic should be',
     { slug: 'a-loose-one', title: 'Filed under nothing', steps: [1,2,3] },
@@ -117,19 +117,19 @@ const ANSWERS = {
     { slug: 'the-second-one-of-these-with-a-generated-identifier-that-runs-on', title: null, project: 'AProjectNameNobodyWouldChooseButAHostMaySendAnyway'.repeat(2) },
     { slug: 'short', title: 'Short', project: 'Fine' },
   ] }),
-  bare: () => make(4, 'Roadmap'),
+  bare: () => make(4, 'Kehikot'),
   empty: () => ({ epics: [] }),
   rubbish: () => ({ total: 12, page: 1 }),
 }
 
 window.addEventListener('message', (e) => {
   const m = e.data
-  if (!m || typeof m.type !== 'string' || !m.type.startsWith('roadmap.')) return
+  if (!m || typeof m.type !== 'string' || !m.type.startsWith('${MESSAGE_PREFIX}')) return
   log('module →', m.type, m.method ?? m.height ?? (m.found !== undefined ? 'found=' + m.found : ''))
 
-  if (m.type === 'roadmap.ready') return
+  if (m.type === '${MESSAGE.READY}') return
 
-  if (m.type === 'roadmap.request') {
+  if (m.type === '${MESSAGE.REQUEST}') {
     if (m.method.endsWith('.list')) {
       if (answer === 'silence') return log('  (saying nothing)')
       if (answer === 'refuse') return reply(m.id, false, { reason: 'failed', error: 'the store is not open right now' })
@@ -177,11 +177,11 @@ function reply(id, ok, rest) {
    * served as a template literal, and one would end the string.
    */
   const body = ok ? { data: rest } : rest
-  frame.contentWindow.postMessage({ type: 'roadmap.response', id, ok, ...body }, '*')
+  frame.contentWindow.postMessage({ type: '${MESSAGE.RESPONSE}', id, ok, ...body }, '*')
   log('  host → response', ok ? 'ok' : rest.reason)
 }
 function sendContext() {
-  frame.contentWindow.postMessage({ type: 'roadmap.context', protocol: 2, ...context }, '*')
+  frame.contentWindow.postMessage({ type: '${MESSAGE.CONTEXT}', protocol: 2, ...context }, '*')
 }
 function greet() {
   /* Handed back verbatim on every greeting, which is the whole of the protocol's
@@ -189,7 +189,7 @@ function greet() {
      that is the value the module has to be correct about too. */
   const state = sessionStorage.getItem('atlas-state')
   frame.contentWindow.postMessage(
-    { type: 'roadmap.hello', protocol: 2, session: 'stub-1', context, state },
+    { type: '${MESSAGE.HELLO}', protocol: 2, session: 'stub-1', context, state },
     '*',
   )
   log('host → hello' + (state ? ' (with ' + state.length + ' bytes kept)' : ' (keeping nothing)'))
@@ -207,7 +207,7 @@ document.getElementById('ghost').addEventListener('click', () => {
 })
 document.getElementById('narrow').addEventListener('click', () => document.body.classList.toggle('narrow'))
 document.getElementById('goto').addEventListener('click', () => {
-  frame.contentWindow.postMessage({ type: 'roadmap.goto', id: 'g-1', ref: 'gh#41' }, '*')
+  frame.contentWindow.postMessage({ type: '${MESSAGE.GOTO}', id: 'g-1', ref: 'gh#41' }, '*')
 })
 </script>
 </body></html>`

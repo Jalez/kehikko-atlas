@@ -24,7 +24,7 @@ describe('the round trip', () => {
   })
 
   test('a named project survives', () => {
-    const there = { at: 'epics', project: { name: 'Roadmap' } } as const
+    const there = { at: 'epics', project: { name: 'Kehikot' } } as const
     expect(reading(writing(there))).toEqual(there)
   })
 

@@ -1,4 +1,4 @@
-import { type NavigationOutcome, navigationResult } from 'roadmap-module-protocol'
+import { type NavigationOutcome, navigationResult } from 'kehikot-module-protocol'
 import type { Answer } from './connection.ts'
 
 /**

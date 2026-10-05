@@ -10,11 +10,11 @@ function epic(slug: string, project: string | null = null, size: number | null =
 describe('a project is a name some epics share', () => {
   test('epics naming the same project land in one group, in the order they arrived', () => {
     const { projects } = intoProjects([
-      epic('a', 'Roadmap'),
+      epic('a', 'Kehikot'),
       epic('b', 'Courier'),
-      epic('c', 'Roadmap'),
+      epic('c', 'Kehikot'),
     ])
-    expect(projects.map((p) => p.name)).toEqual(['Roadmap', 'Courier'])
+    expect(projects.map((p) => p.name)).toEqual(['Kehikot', 'Courier'])
     expect(projects[0]?.epics.map((e) => e.slug)).toEqual(['a', 'c'])
   })
 
@@ -27,9 +27,9 @@ describe('a project is a name some epics share', () => {
 
 describe('a project nothing else mentions', () => {
   const answer = [
-    epic('a', 'Roadmap'),
-    epic('b', 'Roadmap'),
-    epic('c', 'Roadmap'),
+    epic('a', 'Kehikot'),
+    epic('b', 'Kehikot'),
+    epic('c', 'Kehikot'),
     epic('lone', 'Courier'),
   ]
 
@@ -43,7 +43,7 @@ describe('a project nothing else mentions', () => {
   test('it is not folded into a bucket, merged, or dropped', () => {
     const { projects } = intoProjects(answer)
     expect(projects).toHaveLength(2)
-    expect(projects.map((p) => p.name)).toEqual(['Roadmap', 'Courier'])
+    expect(projects.map((p) => p.name)).toEqual(['Kehikot', 'Courier'])
     // No invented group has appeared alongside it.
     expect(projects.some((p) => p.name === 'Other')).toBe(false)
     expect(projects.some((p) => p.name === null)).toBe(false)
@@ -60,15 +60,15 @@ describe('a project nothing else mentions', () => {
 
 describe('an epic naming no project', () => {
   test('goes in a group with no name, rather than being given one', () => {
-    const { projects } = intoProjects([epic('a', 'Roadmap'), epic('loose', null)])
+    const { projects } = intoProjects([epic('a', 'Kehikot'), epic('loose', null)])
     const unfiled = projects.find((p) => p.name === null)
     expect(unfiled?.epics.map((e) => e.slug)).toEqual(['loose'])
   })
 
   test('that group is last, whatever order the epics arrived in', () => {
-    const { projects } = intoProjects([epic('loose', null), epic('a', 'Roadmap')])
+    const { projects } = intoProjects([epic('loose', null), epic('a', 'Kehikot')])
     expect(projects.at(-1)?.name).toBeNull()
-    expect(projects[0]?.name).toBe('Roadmap')
+    expect(projects[0]?.name).toBe('Kehikot')
   })
 })
 
@@ -81,8 +81,8 @@ describe('project names are strings a stranger chose', () => {
   })
 
   test('a project called `__proto__` gets its own group and pollutes nothing', () => {
-    const { projects } = intoProjects([epic('a', '__proto__'), epic('b', 'Roadmap')])
-    expect(projects.map((p) => p.name)).toEqual(['__proto__', 'Roadmap'])
+    const { projects } = intoProjects([epic('a', '__proto__'), epic('b', 'Kehikot')])
+    expect(projects.map((p) => p.name)).toEqual(['__proto__', 'Kehikot'])
     expect(({} as Record<string, unknown>)['polluted']).toBeUndefined()
   })
 
@@ -95,23 +95,23 @@ describe('project names are strings a stranger chose', () => {
 
 describe('where the host says the reader is standing', () => {
   test('the project from the context is marked, and is not duplicated', () => {
-    const territory = intoProjects([epic('a', 'Roadmap')], { epic: null, project: 'Roadmap' })
+    const territory = intoProjects([epic('a', 'Kehikot')], { epic: null, project: 'Kehikot' })
     expect(territory.projects).toHaveLength(1)
-    expect(territory.here).toBe('Roadmap')
+    expect(territory.here).toBe('Kehikot')
     expect(territory.projects[0]?.onlyFromContext).toBe(false)
   })
 
   test('a project named only by the context appears, empty and marked as such', () => {
-    const territory = intoProjects([epic('a', 'Roadmap')], { epic: null, project: 'Courier' })
+    const territory = intoProjects([epic('a', 'Kehikot')], { epic: null, project: 'Courier' })
     const courier = territory.projects.find((p) => p.name === 'Courier')
     expect(courier?.epics).toHaveLength(0)
     expect(courier?.onlyFromContext).toBe(true)
   })
 
   test('a slug that names one of these epics marks it as open', () => {
-    const territory = intoProjects([epic('a', 'Roadmap'), epic('b', 'Roadmap')], {
+    const territory = intoProjects([epic('a', 'Kehikot'), epic('b', 'Kehikot')], {
       epic: 'b',
-      project: 'Roadmap',
+      project: 'Kehikot',
     })
     expect(territory.reading).toBe('b')
     expect(territory.matchedNothing).toBe(false)
@@ -120,16 +120,16 @@ describe('where the host says the reader is standing', () => {
   test('an open epic that is not in the list marks nothing, and does not shout', () => {
     // The host's two statements disagree. Nothing is highlighted, the fact is
     // recorded for the diagnostics, and the map itself says nothing about it.
-    const territory = intoProjects([epic('a', 'Roadmap')], {
+    const territory = intoProjects([epic('a', 'Kehikot')], {
       epic: 'not-in-the-list',
-      project: 'Roadmap',
+      project: 'Kehikot',
     })
     expect(territory.reading).toBeNull()
     expect(territory.matchedNothing).toBe(true)
   })
 
   test('no context at all is not a special case', () => {
-    const territory = intoProjects([epic('a', 'Roadmap')])
+    const territory = intoProjects([epic('a', 'Kehikot')])
     expect(territory.reading).toBeNull()
     expect(territory.matchedNothing).toBe(false)
     expect(territory.here).toBeNull()
@@ -145,7 +145,7 @@ describe('an answer with nothing in it', () => {
   })
 
   test('except that the context can still put the reader somewhere', () => {
-    const territory = intoProjects([], { epic: null, project: 'Roadmap' })
+    const territory = intoProjects([], { epic: null, project: 'Kehikot' })
     expect(territory.projects).toHaveLength(1)
     expect(territory.projects[0]?.onlyFromContext).toBe(true)
   })

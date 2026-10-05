@@ -1,4 +1,4 @@
-import { METHOD_NAMES } from 'roadmap-module-protocol'
+import { METHOD_NAMES } from 'kehikot-module-protocol'
 
 /**
  * The questions this app asks, resolved out of the package rather than written
@@ -49,7 +49,7 @@ function required(what: string, candidates: readonly string[]): string {
   const found = resolve(candidates)
   if (found) return found
   throw new Error(
-    `roadmap-module-protocol names no method for ${what}. Looked for ${candidates.join(', ')}; ` +
+    `kehikot-module-protocol names no method for ${what}. Looked for ${candidates.join(', ')}; ` +
       `it exports ${METHOD_NAMES.join(', ')}. Atlas cannot ask a question the protocol does not name.`,
   )
 }

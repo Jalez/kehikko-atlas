@@ -53,11 +53,11 @@ describe('nothing but `none` says there is nothing', () => {
     { kind: 'unreadable', reading: readEpics(null) },
   ]
 
-  test('none of the five absences claims the roadmap is empty', () => {
+  test('none of the five absences claims the workspace is empty', () => {
     // Naive substring matching is not enough here, because the most careful of
-    // these sentences says "this is NOT a roadmap with no projects in it" —
+    // these sentences says "this is NOT a workspace with no projects in it" —
     // which contains the phrase in order to deny it. So the check is for the
-    // assertion, not the words: a sentence that says the roadmap is empty
+    // assertion, not the words: a sentence that says the workspace is empty
     // without the host having said so.
     for (const situation of aboutTheConversation) {
       const said = words(situation)
@@ -65,7 +65,7 @@ describe('nothing but `none` says there is nothing', () => {
       expect(both).not.toContain('there are no projects')
       expect(both).not.toContain('no epics exist')
       expect(both).not.toContain('nothing to show')
-      expect(both).not.toContain('this roadmap is empty')
+      expect(both).not.toContain('this workspace is empty')
     }
   })
 
@@ -92,7 +92,7 @@ describe('nothing but `none` says there is nothing', () => {
   test('with no host, the sentence is about nobody having spoken', () => {
     const said = words({ kind: 'unframed' })
     expect(said.headline).toBe('Nothing has told this app anything.')
-    expect(said.body).toContain('not a roadmap with no projects in it')
+    expect(said.body).toContain('not a workspace with no projects in it')
   })
 })
 
@@ -128,7 +128,7 @@ describe('which situation an answer puts this app in', () => {
 
   test('entries that were offered and none readable is unreadable, not empty', () => {
     // The host plainly has four of something. Saying "no epics yet" here would
-    // blame the roadmap for a failure on this side of the frame.
+    // blame the workspace for a failure on this side of the frame.
     expect(situationOf(readEpics([1, 2, 3, 4])).kind).toBe('unreadable')
   })
 

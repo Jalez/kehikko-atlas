@@ -23,7 +23,7 @@ import type { Epic } from '../../atlas/reading.ts'
  * why in words somewhere a reader will find them.
  *
  * The one thing it never does is move its own marker. Pressing this asks; the
- * host answers; `roadmap.context` says where the reader actually ended up. A
+ * host answers; `kehikot.context` says where the reader actually ended up. A
  * card that highlighted itself on the acknowledgement would be drawing where it
  * asked to be rather than where anybody is.
  */
