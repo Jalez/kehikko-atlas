@@ -112,6 +112,8 @@ export const MANIFEST = manifestSchema.parse({
   id: ID,
   name: 'Atlas',
   version: VERSION,
+  /* Where a host files this module in its list, most fitting first. */
+  tags: ['planning'],
   summary: 'A map of the territory: which projects exist, and which epics are in each of them.',
   /**
    * What an agent should do about this module, given that it is here.
