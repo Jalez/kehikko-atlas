@@ -1,4 +1,3 @@
-import { BUILD_HEADER } from 'kehikot-module-protocol'
 import { establishBuild, type PageOptions, type Reply } from 'kehikot-module-protocol/serve'
 import { ID, MANIFEST, VERSION } from './manifest.ts'
 
@@ -50,13 +49,13 @@ export const PAGE: PageOptions = {
  * cross-origin to it. When the page asks whether that server is still there,
  * the browser lets it read the answer only if the answer says so. It costs
  * nothing to say: this is a public fact about a process that holds no
- * credential, and the same one `curl` reads.
+ * credential, and the same one `curl` reads. Both servers say it by passing
+ * `openHealth` to the protocol's doors, which opens this door and no other.
  */
 export function answer(method: string, path: string): Reply | null {
   if (path !== '/healthz') return null
-  const open = { 'access-control-allow-origin': '*', 'access-control-expose-headers': BUILD_HEADER }
-  if (method !== 'GET' && method !== 'HEAD') return { status: 405, body: { ok: false, error: 'this door only answers GET' }, headers: open }
-  return { status: 200, body: { ok: true, id: ID, version: VERSION }, headers: open }
+  if (method !== 'GET' && method !== 'HEAD') return { status: 405, body: { ok: false, error: 'this door only answers GET' } }
+  return { status: 200, body: { ok: true, id: ID, version: VERSION } }
 }
 
 export { MANIFEST }

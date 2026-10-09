@@ -14,8 +14,7 @@ import { VERSION } from './manifest.ts'
  *
  * One server with three doors and no store behind any of them:
  *
- *  - `/.well-known/kehikot-module.json` (and the pre-rename `roadmap-module.json`,
- *    the same manifest spelled for an older host), the only path a host ever asks for and
+ *  - `/.well-known/kehikot-module.json`, the only path a host ever asks for and
  *    the whole reason a host can find this at all;
  *  - `/app`, a page fit to be framed and equally fit to be opened directly;
  *  - `/healthz`, so that "not running" and "broken" can be different words on
@@ -92,6 +91,7 @@ const through = doorsFetch({
   manifest: MANIFEST,
   answer,
   build: BUILD,
+  openHealth: true,
   page: () => fillPage(readFileSync(INDEX, 'utf8'), { build: BUILD }),
 })
 

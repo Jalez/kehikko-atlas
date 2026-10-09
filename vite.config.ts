@@ -49,7 +49,7 @@ const here = (path: string) => fileURLToPath(new URL(path, import.meta.url))
 export default defineConfig({
   root: here('./page'),
   base: '/',
-  plugins: [doors({ manifest: MANIFEST, answer, build: BUILD, page: PAGE }), react(), tailwindcss()],
+  plugins: [doors({ manifest: MANIFEST, answer, build: BUILD, openHealth: true, page: PAGE }), react(), tailwindcss()],
   server: {
     /**
      * A module framed by the host is on an OPAQUE ORIGIN, and that makes this
