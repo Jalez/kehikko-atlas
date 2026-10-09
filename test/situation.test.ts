@@ -6,14 +6,15 @@ import { readEpics } from '../atlas/reading.ts'
  * The states of absence, which are the states this app is judged on.
  *
  * Six different facts produce an empty screen and only one of them is about the
- * work. These tests assert that the six stay six: that no two of them share a
- * sentence, that the five which are about the conversation never claim there is
- * nothing, and that the one which is about the work says so plainly.
+ * work. Two of the six — nobody is there, and nobody has spoken yet — are the
+ * same in every module and are the protocol's shared cover; `page.test.tsx`
+ * holds those. These tests are about the four that are this app's own, and the
+ * map: that no two of them share a sentence, that the ones which are about the
+ * conversation never claim there is nothing, and that the one which is about
+ * the work says so plainly.
  */
 
 const every: Situation[] = [
-  { kind: 'unframed' },
-  { kind: 'ungreeted' },
   { kind: 'asked' },
   { kind: 'refused', reason: 'failed', error: 'the store is not open' },
   { kind: 'unanswered', after: 10_000 },
@@ -45,15 +46,13 @@ describe('every state has words, and no two share them', () => {
 
 describe('nothing but `none` says there is nothing', () => {
   const aboutTheConversation: Situation[] = [
-    { kind: 'unframed' },
-    { kind: 'ungreeted' },
     { kind: 'asked' },
     { kind: 'refused', reason: 'failed', error: '' },
     { kind: 'unanswered', after: 10_000 },
     { kind: 'unreadable', reading: readEpics(null) },
   ]
 
-  test('none of the five absences claims the workspace is empty', () => {
+  test('none of the absences about the conversation claims the workspace is empty', () => {
     // Naive substring matching is not enough here, because the most careful of
     // these sentences says "this is NOT a workspace with no projects in it" —
     // which contains the phrase in order to deny it. So the check is for the
@@ -87,12 +86,6 @@ describe('nothing but `none` says there is nothing', () => {
     expect(said.headline).toBe('The host answered: it has no epics yet.')
     expect(said.body).toContain('really does mean there is nothing')
     expect(said.body).toContain('the host answered')
-  })
-
-  test('with no host, the sentence is about nobody having spoken', () => {
-    const said = words({ kind: 'unframed' })
-    expect(said.headline).toBe('Nothing has told this app anything.')
-    expect(said.body).toContain('not a workspace with no projects in it')
   })
 })
 

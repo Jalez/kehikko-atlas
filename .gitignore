@@ -12,3 +12,7 @@ node_modules
 # copy would be a second answer to "what does this page say", which disagrees
 # with the first the moment somebody edits `page/`.
 dist
+
+# Written by build.ts for the length of a build, and removed by it. The page is
+# the protocol's generated document; a copy on disk would be a second answer.
+page/index.html

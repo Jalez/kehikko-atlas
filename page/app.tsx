@@ -7,9 +7,10 @@ import { ProjectSection } from './components/project-section.tsx'
 import { Strip } from './components/strip.tsx'
 import { Travel } from './components/travel.tsx'
 import { travelWords } from '../atlas/navigation.ts'
-import { isFramed } from './attach.ts'
+import { probeServer } from 'kehikot-module-protocol/client'
+import { Cover, coverFor, useServerStanding } from 'kehikot-module-protocol/client/react'
 import { usePlace } from './place.ts'
-import { useAtlas } from './use-atlas.ts'
+import { isFramed, useAtlas } from './use-atlas.ts'
 
 /**
  * Whether anything is framing this page, decided once.
@@ -145,9 +146,20 @@ const FRAMED = isFramed()
  * they have read some of the map.
  */
 export function App() {
-  const { situation, context, territory, again, travelTo, lastTravel, remembered, remember } =
+  const { where, situation, context, territory, again, travelTo, lastTravel, remembered, remember } =
     useAtlas()
   const { chosen, choose } = usePlace({ remembered, remember })
+
+  /**
+   * The states every module has, drawn by the cover every module shares:
+   * waiting to be greeted, nothing framing the page, this app's own server
+   * gone, and a page older than its server (which reloads itself). This app
+   * needs a host and nothing of it — it maps every project, so no open project
+   * is asked for. The absences that are this app's own, the ones about the
+   * question it asked, are the sentences in `atlas/situation.ts`.
+   */
+  const server = useServerStanding()
+  const cover = coverFor({ where, projectPath: null, server }, { host: true }) ?? (situation ? null : 'waiting')
 
   /**
    * Why nothing is pressable, when nothing is.
@@ -159,7 +171,7 @@ export function App() {
   const cannotTravelBecause =
     travelTo !== null
       ? null
-      : situation.kind === 'unframed'
+      : where !== 'hosted'
         ? null // The component's own default sentence is right for this one.
         : lastTravel?.travel.outcome === 'cannot-ask'
           ? travelWords(lastTravel.travel)
@@ -262,7 +274,7 @@ export function App() {
           </header>
         )}
 
-        {situation.kind === 'mapped' && territory ? (
+        {!cover && situation?.kind === 'mapped' && territory ? (
           <>
             {/*
               Under 260 pixels of pane HEIGHT: two pickers side by side, and
@@ -351,7 +363,8 @@ export function App() {
         ) : (
           <>
             {/*
-              One absence, at every height, in the words `atlas/situation.ts`
+              One absence, at every height — the shared cover for the states
+              every module has, and otherwise the words `atlas/situation.ts`
               holds — and drawn once rather than twice.
 
               A short variant of these was written and thrown away. They are the
@@ -369,7 +382,11 @@ export function App() {
               to a paragraph and a height rather than a title and a width.
             */}
             <div className="short:max-h-[100dvh] short:overflow-y-auto short:p-3">
-              <Absence situation={situation} again={again} />
+              {cover || !situation ? (
+                <Cover state={cover ?? 'waiting'} name="Atlas" onRetry={() => void probeServer()} />
+              ) : (
+                <Absence situation={situation} again={again} />
+              )}
             </div>
             {/*
               The account of how travel works is shown even with no host. It is

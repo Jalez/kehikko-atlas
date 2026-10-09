@@ -1,10 +1,11 @@
 #!/usr/bin/env bun
-import { existsSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
 import { dirname, join, normalize } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { LEGACY_WELL_KNOWN, WELL_KNOWN, legacyManifest } from 'kehikot-module-protocol'
-import { frameAncestors } from 'kehikot-module-protocol/serve'
-import { ID, MANIFEST, VERSION } from './manifest.ts'
+import { WELL_KNOWN } from 'kehikot-module-protocol'
+import { PAGE_PATHS, doorsFetch, fillPage } from 'kehikot-module-protocol/serve'
+import { BUILD, MANIFEST, answer } from './doors.ts'
+import { VERSION } from './manifest.ts'
 
 /**
  * Atlas, as a program of its own.
@@ -50,12 +51,6 @@ const BUILT = join(HERE, 'dist')
  */
 const PORT = Number(process.env.PORT ?? 7830)
 
-/** The manifest, serialised once. It cannot change while the process is alive. */
-const MANIFEST_JSON = JSON.stringify(MANIFEST, null, 2)
-
-/** The same manifest in the spelling a host from before the rename asks for. */
-const LEGACY_MANIFEST_JSON = JSON.stringify(legacyManifest(MANIFEST), null, 2)
-
 /**
  * Serve one file out of the build, or nothing.
  *
@@ -80,60 +75,47 @@ function asset(pathname: string): Response | null {
   })
 }
 
-/** The page. Never cached, because a rebuilt bundle must not be shadowed by a stale document. */
-function page(): Response {
-  const index = join(BUILT, 'index.html')
-  if (!existsSync(index)) {
-    /**
-     * A plain sentence rather than a stack trace, because the person who sees
-     * this is the person who cloned the repository and ran the server before
-     * building the page. Telling them the one command is worth more than any
-     * amount of detail about what was missing.
-     */
-    return new Response(
-      'Atlas has no built page. Run `bun install && bun run build` in this directory, then start it again.\n',
-      { status: 503, headers: { 'content-type': 'text/plain; charset=utf-8' } },
-    )
-  }
-  return new Response(Bun.file(index), {
-    headers: {
-      'content-type': 'text/html; charset=utf-8',
-      'cache-control': 'no-store',
-      /* Framed by a host and by nothing else. */
-      'content-security-policy': frameAncestors(),
-    },
+const INDEX = join(BUILT, 'index.html')
+
+/**
+ * The manifest, the page and the health check: the protocol's doors, the same
+ * ones Vite serves in development (`vite.config.ts`), as one function from a
+ * `Request` to a `Response`.
+ *
+ * The page was built ahead of this process, so it carries no build identity of
+ * its own; `fillPage` prints this process's into it. Read from disk on every
+ * request rather than once at start, so a rebuild while this is running is
+ * picked up by the next reload. Never cached, because a rebuilt bundle must not
+ * be shadowed by a stale document; framed by a host and by nothing else.
+ */
+const through = doorsFetch({
+  manifest: MANIFEST,
+  answer,
+  build: BUILD,
+  page: () => fillPage(readFileSync(INDEX, 'utf8'), { build: BUILD }),
+})
+
+/**
+ * A plain sentence rather than a stack trace, because the person who sees this
+ * is the person who cloned the repository and ran the server before building
+ * the page. Telling them the one command is worth more than any amount of
+ * detail about what was missing.
+ */
+const unbuilt = () =>
+  new Response('Atlas has no built page. Run `bun install && bun run build` in this directory, then start it again.\n', {
+    status: 503,
+    headers: { 'content-type': 'text/plain; charset=utf-8', 'cache-control': 'no-store' },
   })
-}
 
 const server = Bun.serve({
   port: PORT,
-  fetch(request) {
+  async fetch(request) {
     const { pathname } = new URL(request.url)
 
-    /**
-     * The manifest. `no-store` because a host asks for this to find out whether
-     * the program on this port is still the program it thinks it is, and an
-     * answer out of a cache would let a module that has been replaced keep
-     * describing itself as the old one.
-     */
-    if (pathname === WELL_KNOWN || pathname === LEGACY_WELL_KNOWN) {
-      return new Response(pathname === WELL_KNOWN ? MANIFEST_JSON : LEGACY_MANIFEST_JSON, {
-        headers: { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' },
-      })
-    }
+    if (PAGE_PATHS.includes(pathname) && !existsSync(INDEX)) return unbuilt()
 
-    /**
-     * Liveness, and nothing more. It says this process is answering. It
-     * deliberately does not say anything about whether a host is talking to the
-     * page, because that is not a fact this process has — the conversation
-     * happens in a browser, in a frame, and a server that claimed to know how it
-     * was going would be guessing.
-     */
-    if (pathname === '/healthz') {
-      return Response.json({ ok: true, id: ID, version: VERSION })
-    }
-
-    if (pathname === '/app' || pathname === '/app/' || pathname === '/') return page()
+    const ours = await through(request)
+    if (ours) return ours
 
     if (pathname.startsWith('/assets/')) {
       const found = asset(pathname)

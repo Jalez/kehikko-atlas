@@ -28,6 +28,13 @@ const { App } = await import('../page/app.tsx')
 const { words } = await import('../atlas/situation.ts')
 const { UNDESCRIBED_PROJECT } = await import('../atlas/chooser.ts')
 const { MESSAGE, PROTOCOL } = await import('kehikot-module-protocol')
+const { mailbox, probeServer, resetServerStanding } = await import('kehikot-module-protocol/client')
+const { COVER_WORDS } = await import('kehikot-module-protocol/client/react')
+
+/** What the shared cover says once the grace has passed and nobody has greeted this page. */
+const UNHOSTED = COVER_WORDS.unhosted('Atlas')
+/** Long enough for that grace (700ms) to run out. */
+const afterTheGrace = () => act(async () => void (await new Promise((done) => setTimeout(done, 800))))
 
 /**
  * Pretend something is framing this page.
@@ -80,14 +87,35 @@ beforeEach(() => {
 })
 afterEach(() => {
   cleanup()
+  /* The client's mailbox keeps what arrived so a late mount can hear it, and
+     this file shares one `window` across every case: without this, one case's
+     greeting is replayed into the next case's freshly mounted app. For a suite
+     only — a page must never forget its backlog. */
+  mailbox.forget?.()
+  /* One fact per page, and `stale` never heals. */
+  resetServerStanding()
 })
 
 describe('with nothing on the other end', () => {
-  test('it says nothing has told it anything, in exactly those words', () => {
+  test('it waits a moment to be greeted, and then says nothing is framing it', async () => {
     render(<App />)
-    const said = words({ kind: 'unframed' })
-    expect(screen.getByText(said.headline)).toBeDefined()
-    expect(screen.getByText(said.body)).toBeDefined()
+    expect(screen.getByText(COVER_WORDS.waiting())).toBeDefined()
+    await afterTheGrace()
+    expect(screen.getByText(UNHOSTED)).toBeDefined()
+    expect(document.querySelector('[data-cover]')?.getAttribute('data-cover')).toBe('unhosted')
+  })
+
+  test('a page opened on its own still hears a greeting posted to it', async () => {
+    /* Nothing reparents a window, but a greeting is a message and whoever
+       posts one is the host: the answer goes back to the window it came from. */
+    const sent: any[] = []
+    const greeter = { postMessage: (message: unknown) => sent.push(message) }
+    render(<App />)
+    act(() => {
+      window.dispatchEvent(new MessageEvent('message', { data: hello, source: greeter as never }))
+    })
+    expect(sent[0].type).toBe(MESSAGE.READY)
+    await waitFor(() => expect(screen.getByText(words({ kind: 'asked' }).headline)).toBeDefined())
   })
 
   test('there is no empty list, no spinner and no "no projects"', () => {
@@ -255,6 +283,35 @@ describe('against a host that will not answer usefully', () => {
     await waitFor(() =>
       expect(screen.getByText('The host answered: it has no epics yet.')).toBeDefined(),
     )
+  })
+
+  test('this app’s own server not answering covers the map, with a way to ask again', async () => {
+    const { sent, fromHost } = frameIt()
+    render(<App />)
+    fromHost(hello)
+    await waitFor(() => expect(sent.some((m) => m.type === MESSAGE.REQUEST)).toBe(true))
+    fromHost({ type: MESSAGE.RESPONSE, id: sent.find((m) => m.type === MESSAGE.REQUEST).id, ok: true, data: { epics: [{ slug: 'one', title: 'One' }] } })
+    await waitFor(() => expect(screen.getAllByText('One').length).toBeGreaterThan(0))
+
+    const real = globalThis.fetch
+    globalThis.fetch = (() => Promise.reject(new TypeError('Load failed'))) as unknown as typeof fetch
+    try {
+      await act(async () => void (await probeServer()))
+      expect(screen.getByText('Atlas’ own server is not answering.')).toBeDefined()
+      expect(screen.queryAllByText('One')).toHaveLength(0)
+
+      globalThis.fetch = (() =>
+        Promise.resolve(new Response(JSON.stringify({ ok: true }), { headers: { 'content-type': 'application/json' } }))) as unknown as typeof fetch
+      await act(async () => {
+        screen.getByRole('button', { name: 'Try again' }).click()
+        await new Promise((done) => setTimeout(done, 0))
+      })
+    } finally {
+      globalThis.fetch = real
+    }
+    /* Back, and the map is the one the host already gave: nothing is asked of the host again. */
+    await waitFor(() => expect(screen.getAllByText('One').length).toBeGreaterThan(0))
+    expect(sent.filter((m) => m.type === MESSAGE.REQUEST)).toHaveLength(1)
   })
 
   test('a goto is answered so the host does not sit through its own timeout', async () => {
@@ -712,11 +769,11 @@ describe('the compact form, in a pane too narrow for a map', () => {
 
     unframe()
     render(<App />)
-    await settle('unframed', words({ kind: 'unframed' }).headline)
+    await settle('waiting', COVER_WORDS.waiting())
 
-    frameIt()
     render(<App />)
-    await settle('ungreeted', words({ kind: 'ungreeted' }).headline)
+    await afterTheGrace()
+    await settle('unhosted', UNHOSTED)
 
     await asked()
     await settle('asked', words({ kind: 'asked' }).headline)
@@ -936,7 +993,9 @@ describe('the short form, in a pane with no height', () => {
      * every other size gets.
      */
     expect(document.querySelector('[data-layout="strip"]')).toBeNull()
-    expect(screen.getByText(words({ kind: 'unframed' }).headline)).toBeDefined()
+    await afterTheGrace()
+    expect(screen.getByText(UNHOSTED)).toBeDefined()
+    expect(document.querySelectorAll('button')).toHaveLength(0)
   })
 
   test('the absence screens are drawn once, not once per layout', async () => {
