@@ -132,6 +132,8 @@ export const MANIFEST = manifestSchema.parse({
   health: '/healthz',
   modes: [{ id: 'atlas', label: 'Atlas', scope: 'epic' }],
   extensions: { emits: [], consumes: [] },
+  /* Why this module has nothing to narrow by the parts of an epic. */
+  partless: "A map of projects and their epics; it sits above any one epic's parts.",
   declares: {
     protocol: `>=${PROTOCOL} <${PROTOCOL + 1}`,
     uses,
