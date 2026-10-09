@@ -1,5 +1,14 @@
 import { type NavigationOutcome, navigationResult } from 'kehikot-module-protocol'
-import type { Answer } from './connection.ts'
+
+/**
+ * What the host said to one question: the answer, or why there is none. Never
+ * a rejection, so no caller needs a catch — `asked` in `page/use-atlas.ts` is
+ * where the protocol client's promise becomes one of these. `timed-out` is the
+ * question that was sent and never answered.
+ */
+export type Answer =
+  | { ok: true; data: unknown }
+  | { ok: false; reason: 'unknown-module' | 'unknown-method' | 'failed' | 'timed-out'; error: string }
 
 /**
  * Asking the host to show an epic.
@@ -20,8 +29,8 @@ import type { Answer } from './connection.ts'
  *
  * **It is a method, not a ninth message.** So it rides `request`/`response`,
  * with the correlation and the timeout and the refusal envelope that already
- * exist. There is nothing new in `connection.ts` for it at all — it is
- * `ask('view.goto', …)`, and that is the point of having made it a method.
+ * exist. There is nothing new on the wire for it at all — it is
+ * `request('view.goto', …)`, and that is the point of having made it a method.
  *
  * **A refusal to move is `ok: true`.** This is the part that is easy to get
  * wrong and the reason this file exists rather than a line in the page. The

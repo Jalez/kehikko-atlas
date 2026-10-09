@@ -53,7 +53,7 @@
  *   renders as an empty pane, and every test that reads text out of a virtual
  *   DOM goes on passing.
  * - Giving it a definite height would mean `100dvh`, and this page REPORTS its
- *   own height to the host (`reportHeight` in `page/attach.ts`) for hosts that
+ *   own height to the host (the observer in `page/use-atlas.ts`) for hosts that
  *   grow the pane to fit. A page that is always exactly as tall as its viewport
  *   and asks to be as tall as it is, in a host that grants it, is a loop with
  *   nothing in it to stop.

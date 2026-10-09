@@ -1,13 +1,15 @@
 import { fileURLToPath } from 'node:url'
 import tailwindcss from '@tailwindcss/vite'
 import react from '@vitejs/plugin-react'
-import { defineConfig, type Plugin } from 'vite'
-import { LEGACY_WELL_KNOWN, WELL_KNOWN, legacyManifest } from 'kehikot-module-protocol'
-import { frameAncestors } from 'kehikot-module-protocol/serve'
-import { MANIFEST } from './manifest.ts'
+import { defineConfig } from 'vite'
+import { doors } from 'kehikot-module-protocol/serve'
+import { BUILD, MANIFEST, PAGE, answer } from './doors.ts'
 
 /**
- * The two doors that are not the page, served by Vite alongside it.
+ * The doors that are not Vite's own are the protocol's `doors()`, served by
+ * Vite alongside the page: the manifest at both well-known paths, the page
+ * (generated, `no-store`, `frame-ancestors`) and the health check through
+ * `answer` in `doors.ts`. See the protocol's docs/module-plumbing.md.
  *
  * A module is one origin or it is nothing: the protocol refuses a manifest
  * whose `entry` points anywhere but the origin the manifest itself came from,
@@ -16,69 +18,27 @@ import { MANIFEST } from './manifest.ts'
  * page and the health check cannot be split across two ports for the
  * convenience of whoever is editing them.
  *
- * Which is why these are middleware here rather than a second server. Vite
- * serves the page with no build step and no artifact in the tree, and answers
- * the other two paths on the same origin, so the arrangement a host sees is the
- * arrangement that exists.
+ * ## `/app` has to be a door rather than a default
+ *
+ * `entry` is `/app`, and under Vite dev that path is not free: the root is
+ * `page/`, `page/app.tsx` exists, and Vite's transform middleware resolves an
+ * extensionless request to the module that matches it. So `GET /app` once
+ * answered `200 text/javascript` with the compiled source of `app.tsx` — a
+ * document a browser loads happily and runs nothing in. The frame's `load`
+ * event fired, the host greeted it, and there was no script in there to hear
+ * the greeting. `doors()` claims the path before Vite's resolver sees it, which
+ * is why it is ahead of the framework's plugins below.
  */
-function doors(): Plugin {
-  return {
-    name: 'atlas-doors',
-    configureServer(server) {
-      server.middlewares.use((request, response, next) => {
-        const path = (request.url ?? '').split('?')[0]
-        if (path === WELL_KNOWN || path === LEGACY_WELL_KNOWN) {
-          response.setHeader('content-type', 'application/json; charset=utf-8')
-          /* The same manifest in the spelling a host from before the rename
-             asks for, so that host still finds this module. */
-          response.end(JSON.stringify(path === WELL_KNOWN ? MANIFEST : legacyManifest(MANIFEST), null, 2))
-          return
-        }
-        if (path === '/healthz') {
-          response.setHeader('content-type', 'application/json; charset=utf-8')
-          response.end(JSON.stringify({ ok: true, id: MANIFEST.id }))
-          return
-        }
-        /*
-         * The page's own door, and it has to be a door rather than a default.
-         *
-         * `entry` is `/app`, and under Vite dev that path is not free: the root
-         * is `page/`, `page/app.tsx` exists, and Vite's transform middleware
-         * resolves an extensionless request to the module that matches it. So
-         * `GET /app` answered `200 text/javascript` with the compiled source of
-         * `app.tsx` — a document a browser loads happily and runs nothing in.
-         * The frame's `load` event fired, the host greeted it, and there was no
-         * script in there to hear the greeting: "loaded its page and did not
-         * answer", which was true and named the wrong half of the problem.
-         *
-         * The old off-disk server routed `/app` to `index.html` explicitly.
-         * Moving to Vite dev dropped that route and nothing replaced it, which
-         * is how a path collision with a source file became silence on the
-         * wire. The rewrite puts it back: `/app` is the page, by name, and no
-         * longer depends on which files happen to sit next to it.
-         */
-        if (path === '/app' || path === '/app/') {
-          /* Framed by a host and by nothing else: `KEHIKOT_ORIGIN` or the
-             older `ROADMAP_ORIGIN`, else every origin a host here serves from. */
-          response.setHeader('content-security-policy', frameAncestors())
-          request.url = '/index.html'
-          next()
-          return
-        }
-        next()
-      })
-    },
-  }
-}
 
 const here = (path: string) => fileURLToPath(new URL(path, import.meta.url))
 
 /**
  * The build.
  *
- * `root` is `page/`, so the page's own `index.html` is the entry and nothing in
- * the app's root — the server, the manifest, the tests — is ever pulled into a
- * browser bundle by accident.
+ * `root` is `page/`, so nothing in the app's root — the server, the manifest,
+ * the tests — is ever pulled into a browser bundle by accident. There is no
+ * `index.html` there: the document is generated (`PAGE` in `doors.ts`), and
+ * `build.ts` writes it out for the length of a build.
  *
  * `base: '/'` and absolute asset URLs, because the page is served at `/app`
  * while its assets live under `/assets/`. A relative base would make the asset
@@ -89,7 +49,7 @@ const here = (path: string) => fileURLToPath(new URL(path, import.meta.url))
 export default defineConfig({
   root: here('./page'),
   base: '/',
-  plugins: [doors(), react(), tailwindcss()],
+  plugins: [doors({ manifest: MANIFEST, answer, build: BUILD, page: PAGE }), react(), tailwindcss()],
   server: {
     /**
      * A module framed by the host is on an OPAQUE ORIGIN, and that makes this

@@ -1,15 +1,69 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import type { ModuleContext } from 'kehikot-module-protocol'
-import type { Connection } from '../atlas/connection.ts'
-import { PATIENCE } from '../atlas/connection.ts'
+import { clampHeight, type ModuleContext } from 'kehikot-module-protocol'
+import { HostRefused } from 'kehikot-module-protocol/client'
+import { useHost, type KeptCodec, type Where } from 'kehikot-module-protocol/client/react'
 import { type Territory, intoProjects } from '../atlas/grouping.ts'
 import type { Chosen } from '../atlas/chooser.ts'
 import { reading, writing } from '../atlas/keep.ts'
 import { GOTO, KEEP_STATE, LIST_EPICS } from '../atlas/methods.ts'
-import { type Travel, readTravel } from '../atlas/navigation.ts'
+import { ID } from '../manifest.ts'
+import { type Answer, type Travel, readTravel } from '../atlas/navigation.ts'
 import { readEpics } from '../atlas/reading.ts'
 import { type Situation, situationOf } from '../atlas/situation.ts'
-import { attach, isFramed, reportHeight } from './attach.ts'
+
+/**
+ * How long a question waits for its answer before this app says it gave up.
+ *
+ * Ten seconds: long enough that a host doing real work answers inside it,
+ * short enough that a page does not look like it is still loading after a
+ * person has stopped believing it.
+ */
+export const PATIENCE = 10_000
+
+/**
+ * Whether anything is framing this page.
+ *
+ * `window.parent === window` is how a top-level document looks: a browsing
+ * context with no parent is its own parent. It decides one thing — whether the
+ * page says its own name — and not whether a host is there: that is `where`.
+ */
+export function isFramed(): boolean {
+  return typeof window !== 'undefined' && window.parent !== window
+}
+
+/**
+ * The place a host keeps for this app, read through `atlas/keep.ts`, which
+ * distrusts it. Wrapped because `null` is a real place here — the reader was at
+ * the unset position — and the hook's own `null` means nothing was kept.
+ */
+type Kept = { chosen: Chosen | null }
+const KEPT: KeptCodec<Kept> = {
+  read: (state) => {
+    const chosen = reading(state)
+    return chosen === undefined ? null : { chosen }
+  },
+  write: (kept) => writing(kept.chosen),
+}
+
+/** What a `goto` is told. Always the same, and still owed: a host waits on the answer. */
+const NOWHERE_TO_GO = 'Atlas is a map of projects and their epics; it draws no references or steps for a goto to land on.'
+
+/**
+ * One question, as an `Answer` and never a rejection.
+ *
+ * The protocol client rejects with `HostRefused`; `silent` is its word for a
+ * question that was sent and not answered in time, which is this app's
+ * `timed-out` and its own screen.
+ */
+async function asked(question: Promise<unknown>): Promise<Answer> {
+  try {
+    return { ok: true, data: await question }
+  } catch (error) {
+    if (!(error instanceof HostRefused)) return { ok: false, reason: 'failed', error: 'This app failed while reading the host’s answer.' }
+    const { reason, error: said } = error.refusal
+    return { ok: false, reason: reason === 'silent' ? 'timed-out' : reason, error: said }
+  }
+}
 
 /**
  * The whole of this app's state, in one hook.
@@ -36,7 +90,10 @@ import { attach, isFramed, reportHeight } from './attach.ts'
  * inferred from whether some array is empty.
  */
 export interface Atlas {
-  situation: Situation
+  /** Whether anything is framing this page: waiting to hear, nobody there, or a host. */
+  where: Where
+  /** The situation, once a host has greeted this page and been asked. `null` before that. */
+  situation: Situation | null
   /** The context as last heard. Null until the greeting arrives, or forever if it never does. */
   context: ModuleContext | null
   /** The map, when there is one. */
@@ -65,10 +122,7 @@ export interface Atlas {
 }
 
 export function useAtlas(): Atlas {
-  const [situation, setSituation] = useState<Situation>(() =>
-    isFramed() ? { kind: 'ungreeted' } : { kind: 'unframed' },
-  )
-  const [context, setContext] = useState<ModuleContext | null>(null)
+  const [situation, setSituation] = useState<Situation | null>(null)
   const [lastTravel, setLastTravel] = useState<Atlas['lastTravel']>(null)
   /**
    * Set once a host has answered `unknown-method` to a navigation call.
@@ -80,13 +134,32 @@ export function useAtlas(): Atlas {
    * five identical refusals would reasonably conclude the app is broken.
    */
   const [cannotAsk, setCannotAsk] = useState(false)
+  /** The question in flight, by number: only the newest one's answer becomes the page. */
+  const asking = useRef(0)
+
   /**
-   * Undefined until a greeting has been read, and undefined afterwards too when
-   * the host kept nothing. Both mean the same thing to the drill-down — do not
-   * touch it — which is why one value covers them.
+   * The host: the protocol's `useHost`, which is the connection, the grace
+   * before "nobody is there", the theme on `<html>` and the kept place. It
+   * accepts a greeting from whatever window gives one, so this page opened on
+   * its own is waited on for a moment and then says nothing is framing it.
+   *
+   * The theme goes on the document element rather than on a wrapper, because
+   * the shadcn tokens are defined on `:root` and `.dark`, and a class on a div
+   * would leave the page's own background — painted by `body` — in the other
+   * theme.
    */
-  const [remembered, setRemembered] = useState<Chosen | null | undefined>(undefined)
-  const connection = useRef<Connection | null>(null)
+  const host = useHost<Kept>(
+    ID,
+    {
+      /* The kept place is already in the hook's standing by the time this is
+         called, so the drill-down is seeded before there is a territory to
+         draw with it. */
+      onHello: () => void askForEpics(),
+      onGoto: (_goto, answer) => answer(false, NOWHERE_TO_GO),
+    },
+    { kept: KEPT, answerWithin: PATIENCE },
+  )
+  const { context, where, request, resize } = host
 
   /**
    * Ask, and turn the answer into a situation.
@@ -98,15 +171,14 @@ export function useAtlas(): Atlas {
    * rest of the app is built on.
    */
   const askForEpics = useCallback(async () => {
-    const live = connection.current
-    if (!live) return
+    const mine = (asking.current += 1)
     setSituation({ kind: 'asked' })
-    const answer = await live.ask(LIST_EPICS)
+    const answer = await asked(request(LIST_EPICS))
     /*
-     * An answer to a question asked by a connection that is gone is dropped.
+     * An answer to a question that is no longer the newest is dropped.
      *
      * `StrictMode` mounts, unmounts and mounts again on purpose, so the first
-     * mount opens a connection, asks for the epics and is thrown away with its
+     * mount hears the greeting, asks for the epics and is thrown away with its
      * question still outstanding. That question does not vanish: it either
      * arrives or, ten seconds later, gives up — and either way it calls
      * `setSituation`, which is the same setter the surviving mount is using.
@@ -114,11 +186,11 @@ export function useAtlas(): Atlas {
      * What that looked like was a page that loaded, drew thirteen epics
      * correctly, and replaced them with "the host was asked and has not
      * answered" exactly ten seconds later. A lie about a host that had answered
-     * twice, timed by a promise belonging to a component that no longer
+     * twice, timed by a promise belonging to a connection that no longer
      * existed — and the host's own logs were clean throughout, which is the
      * least helpful pair of symptoms available.
      */
-    if (connection.current !== live) return
+    if (asking.current !== mine) return
     if (!answer.ok) {
       setSituation(
         answer.reason === 'timed-out'
@@ -128,69 +200,35 @@ export function useAtlas(): Atlas {
       return
     }
     setSituation(situationOf(readEpics(answer.data)))
-  }, [])
-
-  useEffect(() => {
-    if (!isFramed()) return
-
-    const attached = attach({
-      onHello: (_context, _protocol, _session, kept) => {
-        /* Read before the epics are asked for, so the drill-down is already
-           seeded by the time there is a territory to draw with it. Nothing here
-           waits on the answer: `reading` is pure, never throws, and returns
-           undefined for anything it cannot vouch for. */
-        setRemembered(reading(kept))
-        void askForEpics()
-      },
-      onContext: (next) => setContext(next),
-    })
-
-    /*
-     * The connection is stored BEFORE listening starts, and the order is
-     * load-bearing rather than tidy.
-     *
-     * The mailbox replays anything that arrived before this effect ran, and it
-     * replays synchronously — so `onHello` can fire inside `listen()`, on this
-     * very line. `askForEpics` reads this ref. Listening first meant the
-     * greeting arrived, found the ref still null, and returned without asking
-     * anything, while `Connection` answered the host's greeting on its own. The
-     * host saw a ready module; the module's own screen said nothing had
-     * greeted it. See the essay on `Attached.listen`.
-     */
-    connection.current = attached.connection
-    const stopListening = attached.listen()
-    const stopReporting = reportHeight(attached.connection)
-
-    return () => {
-      stopReporting()
-      stopListening()
-      connection.current = null
-    }
-  }, [askForEpics])
+  }, [request])
 
   /**
-   * The theme the host says it is in.
+   * Say how tall this page would like to be, whenever that changes.
    *
-   * Applied to the document element rather than to a wrapper, because the
-   * shadcn tokens are defined on `:root` and `.dark`, and a class on a div would
-   * leave the page's own background — painted by `body` — in the other theme. A
-   * module one shade lighter than the page around it is worse than one that made
-   * no attempt.
-   *
-   * With no host, no class is set at all, which lets the media query in
-   * `styles.css` decide. That is the honest default: standalone, nobody has told
-   * this app what theme to be in, and the reader's system is the only opinion
-   * available.
+   * Observed rather than computed, because the height is a fact about layout
+   * and layout is the browser's. Advisory, like every resize: the host bounds
+   * it and may ignore it entirely, and nothing on this page depends on the
+   * answer. A repeated height is not sent twice — an observer fires for more
+   * than this page cares about.
    */
   useEffect(() => {
-    if (!context) return
-    const root = document.documentElement
-    root.classList.toggle('dark', context.theme === 'dark')
-    root.classList.toggle('light', context.theme === 'light')
-  }, [context])
+    let last = 0
+    const observer = new ResizeObserver(() => {
+      const height = clampHeight(document.documentElement.scrollHeight)
+      if (height === last) return
+      last = height
+      resize(height)
+    })
+    observer.observe(document.documentElement)
+    return () => {
+      observer.disconnect()
+      /* The question goes with the page that asked it. */
+      asking.current += 1
+    }
+  }, [resize])
 
   const territory = useMemo(() => {
-    if (situation.kind !== 'mapped') return null
+    if (situation?.kind !== 'mapped') return null
     return intoProjects(situation.reading.epics, {
       epic: context?.epic ?? null,
       project: context?.project ?? null,
@@ -201,7 +239,7 @@ export function useAtlas(): Atlas {
    * Ask the host to show an epic.
    *
    * Null in three cases, and each of them is a case where offering would be a
-   * lie: nothing is framing this page, the installed protocol has no navigation
+   * lie: no host has greeted this page, the installed protocol has no navigation
    * method at all, or this host has already said it does not answer one. The
    * page draws the reason rather than a dead button.
    *
@@ -212,20 +250,18 @@ export function useAtlas(): Atlas {
    * be wrong for as long as it took the host to disagree.
    */
   const travelTo = useMemo(() => {
-    if (!isFramed() || !GOTO || cannotAsk) return null
+    if (where !== 'hosted' || !GOTO || cannotAsk) return null
     // Captured, so the closure below holds a `string` rather than the module
     // constant's `string | null` — the guard above has already settled it.
     const method = GOTO
     return (slug: string) => {
-      const live = connection.current
-      if (!live) return
       void (async () => {
-        const travel = readTravel(await live.ask(method, { epic: slug }))
+        const travel = readTravel(await asked(request(method, { epic: slug })))
         if (travel.outcome === 'cannot-ask') setCannotAsk(true)
         setLastTravel({ slug, travel })
       })()
     }
-  }, [cannotAsk])
+  }, [where, cannotAsk, request])
 
   /**
    * Hand the place to the host to keep.
@@ -236,20 +272,15 @@ export function useAtlas(): Atlas {
    * last successful save said. Surfacing that would be an error message about a
    * convenience nobody was promised.
    *
-   * The local state is NOT updated from here. `remembered` is what the host said
-   * on the greeting and stays that; where the reader is now is the drill-down's
-   * own state, and a second copy here would be a second answer going stale on
-   * its own schedule.
+   * The hook holds what was handed over as well as sending it, which changes
+   * nothing on screen: where the reader is now is the drill-down's own state
+   * (`place.ts`), and it stops listening to `remembered` once it has settled.
    */
+  const keep = host.remember
   const remember = useMemo(() => {
-    if (!isFramed() || !KEEP_STATE) return null
-    const method = KEEP_STATE
-    return (chosen: Chosen | null) => {
-      const live = connection.current
-      if (!live) return
-      void live.ask(method, { state: writing(chosen) })
-    }
-  }, [])
+    if (where !== 'hosted' || !KEEP_STATE) return null
+    return (chosen: Chosen | null) => keep({ chosen })
+  }, [where, keep])
 
   /**
    * Whether asking the list question again is worth offering.
@@ -263,11 +294,15 @@ export function useAtlas(): Atlas {
    */
   const again = useMemo(() => {
     const worthIt =
-      situation.kind === 'unanswered' ||
-      situation.kind === 'unreadable' ||
-      (situation.kind === 'refused' && situation.reason === 'failed')
+      situation?.kind === 'unanswered' ||
+      situation?.kind === 'unreadable' ||
+      (situation?.kind === 'refused' && situation.reason === 'failed')
     return worthIt ? () => void askForEpics() : null
   }, [situation, askForEpics])
 
-  return { situation, context, territory, again, travelTo, lastTravel, remembered, remember }
+  /* Undefined until a greeting has been read, and afterwards too when the host
+     kept nothing. Both mean the same thing to the drill-down — do not touch it. */
+  const remembered = where === 'hosted' && host.kept ? host.kept.chosen : undefined
+
+  return { where, situation, context, territory, again, travelTo, lastTravel, remembered, remember }
 }

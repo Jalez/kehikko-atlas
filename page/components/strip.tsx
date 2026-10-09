@@ -104,7 +104,7 @@ import {
  * - A reader who pressed something cannot scroll away from the host's answer to
  *   it, and a reader scrolling for a ninth epic cannot lose the row that says
  *   which project those epics belong to.
- * - `page/attach.ts` reports this page's height to the host, and some hosts
+ * - `page/use-atlas.ts` reports this page's height to the host, and some hosts
  *   grow the pane to it. Capped at the viewport, the reported height can only
  *   ever be at most the pane, so a host that grows to it cannot grow the pane
  *   past the threshold that chose this layout. An uncapped strip could: it

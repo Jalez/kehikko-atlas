@@ -26,6 +26,11 @@ import { LIST_EPICS } from './methods.ts'
  * from one that was never installed, so a host says which. This file is that
  * rule applied to what a module draws.
  *
+ * The first two are the same in every module, and are the protocol's shared
+ * cover — "Waiting for Kehikot…", then "Nothing is framing this page" — drawn
+ * in `page/app.tsx` from what `useHost` says. The four after them are this
+ * app's own, and are the states below.
+ *
  * The states are kept as data with their words attached, in one place, for two
  * reasons: so the page cannot draw a seventh state nobody wrote a sentence for,
  * and so the sentences can be tested for saying what they are supposed to say
@@ -33,10 +38,6 @@ import { LIST_EPICS } from './methods.ts'
  */
 
 export type Situation =
-  /** No host: `window.parent === window`. The page is running as its own program. */
-  | { kind: 'unframed' }
-  /** Framed, and `kehikot.hello` has not arrived. */
-  | { kind: 'ungreeted' }
   /** Greeted; the question is in flight. */
   | { kind: 'asked' }
   /** The host answered `ok: false`. `reason` is a word from the protocol's closed set. */
@@ -72,18 +73,6 @@ export interface Words {
  */
 export function words(situation: Situation): Words {
   switch (situation.kind) {
-  case 'unframed':
-    return {
-      headline: 'Nothing has told this app anything.',
-      body:
-          'Atlas holds no workspace of its own. It keeps no copy, reads no repository and talks to no tracker — it draws what a host answers, and this page was opened on its own, so nothing has been asked and nothing has answered. What you are looking at is not a workspace with no projects in it. It is a workspace nobody has described yet.',
-    }
-  case 'ungreeted':
-    return {
-      headline: 'Something is framing this page and has not said hello.',
-      body:
-          'A host is on the other side of this frame. Until its greeting arrives, Atlas has not been told which epics exist — and has not been told that none do. From here those two look identical, and only one of them is about the work.',
-    }
   case 'asked':
     return {
       headline: 'The question is out.',

@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test'
-import type { Answer } from '../atlas/connection.ts'
+import type { Answer } from '../atlas/navigation.ts'
 import { readTravel, travelWords, worthPressingAgain } from '../atlas/navigation.ts'
 
 /**
