@@ -3,14 +3,14 @@ import { existsSync, readFileSync } from 'node:fs'
 import { dirname, join, normalize } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { WELL_KNOWN } from 'kehikot-module-protocol'
-import { PAGE_PATHS, doorsFetch, fillPage } from 'kehikot-module-protocol/serve'
-import { BUILD, MANIFEST, answer } from './doors.ts'
-import { VERSION } from './manifest.ts'
+import { LOOPBACK, PAGE_PATHS, claim, doorsFetch, fillPage, originFor, preferred, registerAt, sayClaim } from 'kehikot-module-protocol/serve'
+import { BUILD, MANIFEST, NOT_HERE, answer, answersAt } from './doors.ts'
+import { ID, PREFERRED_PORT, VERSION } from './manifest.ts'
 
 /**
  * Atlas, as a program of its own.
  *
- *   ./run.sh                    # or: PORT=7830 bun run server.ts
+ *   bun run build && bun run start     # or: PORT=7830 bun run server.ts
  *
  * One server with three doors and no store behind any of them:
  *
@@ -44,11 +44,23 @@ const BUILT = join(HERE, 'dist')
  * The port is whoever started this program's decision.
  *
  * A module that picked its own would answer somewhere nobody is looking: a host
- * that starts a module hands it a port and then goes to that port. The default
- * is for running it by hand and matches the one in `run.sh`, so both ways of
- * starting it land in the same place.
+ * that starts a module hands it a port and then goes to that port. So `PORT`
+ * wins, and `PREFERRED_PORT` is for running it by hand — the same one `run.sh`
+ * lands on. The protocol's `claim` then says what is true of that port: free,
+ * and it is taken; Atlas already answering there, and this start ends cleanly
+ * rather than making a second copy; anything else, and it moves to the next
+ * free one and says so.
  */
-const PORT = Number(process.env.PORT ?? 7830)
+const claimed = await claim({ id: ID, prefer: preferred(PREFERRED_PORT) })
+if (claimed.status === 'already-running') {
+  console.log(sayClaim(claimed))
+  process.exit(0)
+}
+if (claimed.status === 'nowhere') {
+  console.error(sayClaim(claimed))
+  process.exit(1)
+}
+if (claimed.moved) console.log(sayClaim(claimed))
 
 /**
  * Serve one file out of the build, or nothing.
@@ -108,8 +120,15 @@ const unbuilt = () =>
   })
 
 const server = Bun.serve({
-  port: PORT,
+  /* Loopback only, like the dev server: this is a program for the machine it runs on. */
+  hostname: LOOPBACK,
+  port: claimed.port,
   async fetch(request) {
+    /* Asked under a name that is not this machine's: not answered, whatever the path. See `answersAt`. */
+    if (!answersAt(request.headers.get('host'))) {
+      return new Response(NOT_HERE, { status: 403, headers: { 'content-type': 'text/plain; charset=utf-8', 'cache-control': 'no-store' } })
+    }
+
     const { pathname } = new URL(request.url)
 
     if (PAGE_PATHS.includes(pathname) && !existsSync(INDEX)) return unbuilt()
@@ -129,6 +148,17 @@ const server = Bun.serve({
   },
 })
 
-console.log(`Atlas ${VERSION} on http://localhost:${server.port}`)
-console.log(`  page      http://localhost:${server.port}/app`)
-console.log(`  manifest  http://localhost:${server.port}${WELL_KNOWN}`)
+/**
+ * The address, written down after the socket is bound: `server.port` is the one
+ * this process is actually answering on. This is how a host finds Atlas — it
+ * sweeps the registry and reads the manifest at each address — and every start
+ * rewrites it, so a registration never names a port this app has moved off.
+ */
+const origin = originFor(server.port ?? claimed.port)
+const written = registerAt({ id: ID, origin, dir: HERE })
+
+console.log(`Atlas ${VERSION} on ${origin}`)
+console.log(`  page      ${origin}/app`)
+console.log(`  manifest  ${origin}${WELL_KNOWN}`)
+console.log(`${ID} registered: ${written.file} -> ${origin}`)
+if (written.was) console.log(`  (was ${written.was.url}${written.was.dir ? ` in ${written.was.dir}` : ''})`)

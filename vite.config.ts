@@ -2,8 +2,9 @@ import { fileURLToPath } from 'node:url'
 import tailwindcss from '@tailwindcss/vite'
 import react from '@vitejs/plugin-react'
 import { defineConfig } from 'vite'
-import { doors } from 'kehikot-module-protocol/serve'
+import { doors, serves } from 'kehikot-module-protocol/serve'
 import { BUILD, MANIFEST, PAGE, answer } from './doors.ts'
+import { ID, PREFERRED_PORT } from './manifest.ts'
 
 /**
  * The doors that are not Vite's own are the protocol's `doors()`, served by
@@ -49,7 +50,19 @@ const here = (path: string) => fileURLToPath(new URL(path, import.meta.url))
 export default defineConfig({
   root: here('./page'),
   base: '/',
-  plugins: [doors({ manifest: MANIFEST, answer, build: BUILD, openHealth: true, page: PAGE }), react(), tailwindcss()],
+  plugins: [
+    /*
+     * `serves()` is first because it has to claim a port before Vite binds one: `PREFERRED_PORT`,
+     * or `PORT` from whoever started this. Once listening it writes this module's registration
+     * with the port actually bound, which is how a host finds Atlas at all — the same as every
+     * other module. `dir` is said because Vite's root here is `page/`, and a host starts a module
+     * by running `run.sh` in the checkout.
+     */
+    serves({ id: ID, prefer: PREFERRED_PORT, dir: import.meta.dirname }),
+    doors({ manifest: MANIFEST, answer, build: BUILD, openHealth: true, page: PAGE }),
+    react(),
+    tailwindcss(),
+  ],
   server: {
     /**
      * A module framed by the host is on an OPAQUE ORIGIN, and that makes this

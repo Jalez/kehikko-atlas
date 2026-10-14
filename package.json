@@ -8,6 +8,7 @@
     "build": "bun run build.ts",
     "start": "bun run server.ts",
     "dev": "vite",
+    "register": "bun run register.ts",
     "test": "bun test",
     "typecheck": "tsc --noEmit"
   },
@@ -20,7 +21,7 @@
     "lucide-react": "^0.544.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
-    "kehikot-module-protocol": "git+ssh://git@github.com/Jalez/kehikko-protocol.git#v1.1.1",
+    "kehikot-module-protocol": "git+ssh://git@github.com/Jalez/kehikko-protocol.git#v1.3.0",
     "tailwind-merge": "^3.6.0",
     "zod": "^3.25.76"
   },
