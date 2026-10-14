@@ -485,7 +485,7 @@ describe('what decides the layout is the pane, not the window', () => {
     })
     await waitFor(() => expect(screen.getByText('One')).toBeDefined())
 
-    const grid = document.querySelector('section [class*="grid-cols-1"]')
+    const grid = document.querySelector('section [class*="auto-fit"]')
     expect(grid).not.toBeNull()
     /*
      * Container queries rather than `sm:` and `xl:`. A media query inside a
@@ -495,8 +495,9 @@ describe('what decides the layout is the pane, not the window', () => {
      * Asserted against the class list because the alternative is asserting a
      * computed column count, and happy-dom has no layout to compute one from.
      */
-    expect(grid!.className).toContain('@md/page:grid-cols-2')
-    expect(grid!.className).toContain('@2xl/page:grid-cols-3')
+    /* Columns come from the track list, not from any media query, and `auto-fit` is what lets a lone card fill the width. */
+    expect(grid!.className).toContain('auto-fit')
+    expect(grid!.className).toContain('12.5rem')
     expect(grid!.className).not.toMatch(/(^|\s)(sm|md|lg|xl):grid-cols/)
   })
 

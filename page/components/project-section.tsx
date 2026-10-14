@@ -114,14 +114,16 @@ export function ProjectSection({
         this grid does not, and a viewport breakpoint would add a third column on
         the strength of space these cards never receive.
 
-        The thresholds are the width the CARDS need rather than round numbers. A
-        card holding a title, a lede and a slug stops being worth reading below
-        about 200 pixels, and the container is the column minus its own padding
-        and the gaps — so two columns need `@md` (448) and three need `@2xl`
-        (672), each of which leaves every card just over 200.
+        `auto-fit` over a 12.5rem (200px) minimum, rather than fixed column
+        counts at container thresholds: a project with one epic used to draw
+        that card at a third of the pane's width with the rest empty, and a
+        track that has no card collapses here so the cards share the whole
+        width. The minimum is the width a card holding a title, a lede and a
+        slug stops being worth reading below, and `min(100%, …)` keeps a
+        narrower pane at one column rather than overflowing.
       */}
       {project.epics.length > 0 ? (
-        <div className="grid grid-cols-1 gap-2 @md/page:grid-cols-2 @2xl/page:grid-cols-3">
+        <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,12.5rem),1fr))] gap-2">
           {first.map((epic) => (
             <EpicCard
               key={epic.slug}
@@ -136,7 +138,7 @@ export function ProjectSection({
 
       {rest.length > 0 ? (
         <Collapsible open={open} onOpenChange={setOpen} className="mt-2">
-          <CollapsibleContent className="grid grid-cols-1 gap-2 @md/page:grid-cols-2 @2xl/page:grid-cols-3">
+          <CollapsibleContent className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,12.5rem),1fr))] gap-2">
             {rest.map((epic) => (
               <EpicCard
                 key={epic.slug}
