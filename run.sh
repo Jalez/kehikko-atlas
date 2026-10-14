@@ -1,6 +1,7 @@
 #!/usr/bin/env sh
 #
-# Start Atlas. No arguments. `PORT` from the environment, or 7830.
+# Start Atlas. No arguments. `PORT` from the environment, or 7830. It registers
+# itself with the address it ends up answering at.
 #
 # ## One port, and no build
 #
@@ -44,4 +45,11 @@ if [ ! -d node_modules ] || [ ! -f "$INSTALLED" ] || [ bun.lock -nt "$INSTALLED"
   VITE_FORCE=--force
 fi
 
-exec bunx vite --host 127.0.0.1 --port "${PORT:-7830}" --strictPort $VITE_FORCE
+# No port on this line, and no `--strictPort`. The port is said once, as
+# `PREFERRED_PORT` in `manifest.ts`, and `serves()` in `vite.config.ts` decides:
+# `PORT` when whoever started this named one, 7830 otherwise, loopback only. A
+# free port is taken in silence; Atlas already answering there ends this start
+# cleanly rather than making a second copy; anything else in the way is a loud
+# move to the next free port. Either way the port actually bound is written to
+# this module's registration, which is how a host finds it.
+exec bunx vite $VITE_FORCE

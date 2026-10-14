@@ -58,4 +58,27 @@ export function answer(method: string, path: string): Reply | null {
   return { status: 200, body: { ok: true, id: ID, version: VERSION } }
 }
 
+/** What a request sent to this program under another name is told, with status 403. */
+export const NOT_HERE = 'This address is not one this program answers at.\n'
+
+/**
+ * Whether a `Host` header names this machine: `127.0.0.1`, `localhost` or a name under it, or
+ * `[::1]`, with or without a port.
+ *
+ * The protocol's gate reads `Origin` against `Host`, so it trusts `Host` to be this server. Under
+ * Vite that is checked before the doors are reached — a request whose `Host` is not this machine
+ * is refused. The built page's `Bun.serve` has nothing in front of it, so `server.ts` asks here:
+ * a name somebody else pointed at this machine is not answered, whatever path it asks for.
+ */
+export function answersAt(host: string | null): boolean {
+  if (!host) return false
+  let name: string
+  try {
+    name = new URL(`http://${host}`).hostname.toLowerCase()
+  } catch {
+    return false
+  }
+  return name === '127.0.0.1' || name === '[::1]' || name === 'localhost' || name.endsWith('.localhost')
+}
+
 export { MANIFEST }

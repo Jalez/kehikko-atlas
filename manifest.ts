@@ -5,6 +5,15 @@ export const ID = 'kehikot.atlas'
 export const VERSION = '1.0.0'
 
 /**
+ * The port this app takes when nothing else has it, said once: `run.sh`, the
+ * built page's `server.ts` and `register.ts` all read it from here. `PORT` from
+ * the environment wins over it, because whoever starts a module chose where it
+ * answers; and when the port is taken by something else the protocol's `claim`
+ * moves to the next free one and the registration is rewritten to match.
+ */
+export const PREFERRED_PORT = 7830
+
+/**
  * What this app says about itself when a host asks.
  *
  * The manifest is the smallest half of this program and the only half a host
