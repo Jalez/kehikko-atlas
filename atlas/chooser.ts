@@ -94,6 +94,13 @@ import type { Words } from './situation.ts'
  */
 export interface Picked {
   name: string | null
+  /**
+   * The project's permanent id (protocol 2.1.0), when this was the project the
+   * host said the reader was in and the host gave it one. Only a KEPT place
+   * carries it: a project renamed since it was kept is found by the id, where
+   * the name would no longer match. Without it the name is all there is.
+   */
+  id?: string
 }
 
 /**
@@ -151,6 +158,12 @@ export function placeShown(territory: Territory, chosen: Chosen | null): Place {
     return here ? { at: 'epics', project: here } : { at: 'projects' }
   }
   if (chosen.at === 'projects') return { at: 'projects' }
+  /* By id first: the project the host says the reader is in, when it is the one that was kept, whatever it is called now. */
+  const id = chosen.project.id
+  if (id && territory.hereId === id && territory.here !== null) {
+    const here = territory.projects.find((each) => each.name === territory.here)
+    if (here) return { at: 'epics', project: here }
+  }
   const project = territory.projects.find((each) => each.name === chosen.project.name)
   return project ? { at: 'epics', project } : { at: 'projects' }
 }

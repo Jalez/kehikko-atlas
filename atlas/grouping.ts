@@ -62,6 +62,12 @@ export interface Territory {
   /** The project the host says the reader is in, if it named one. */
   here: string | null
   /**
+   * That project's permanent id (`context.projectId`, protocol 2.1.0), when the
+   * host sent one. A kept place names a project by it as well as by name, so a
+   * project renamed since is still found (`placeShown`).
+   */
+  hereId?: string | null
+  /**
    * The epic the host says is open, when it turned out to be one of these.
    *
    * `kehikot.context` carries an epic slug and a project, and the protocol is
@@ -98,6 +104,8 @@ export interface Standing {
   epic: string | null
   /** The project that epic belongs to, as the host reports it. */
   project: string | null
+  /** That project's id, when the host sent one (2.1.0). */
+  projectId?: string | null
 }
 
 /**
@@ -159,6 +167,7 @@ export function intoProjects(epics: Epic[], standing: Standing = { epic: null, p
     projects,
     epics: epics.length,
     here: standing.project,
+    hereId: standing.project !== null ? (standing.projectId ?? null) : null,
     reading: matched ? open : null,
     matchedNothing: open !== null && !matched,
   }

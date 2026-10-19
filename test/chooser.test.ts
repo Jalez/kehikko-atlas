@@ -179,3 +179,29 @@ describe('a project the host named and described no epics for', () => {
     expect(UNDESCRIBED_PROJECT.body).toContain('this project')
   })
 })
+
+describe('a kept project is found by its id when the host gives one', () => {
+  const ID = '3f2b8c1e-0d4a-4e5b-9c6d-7e8f9a0b1c2d'
+
+  test('a project renamed since it was kept is found by the id', () => {
+    /* Kept as "Kehikot" with its id; the folder was renamed, and the host now calls it "Kehikot app". */
+    const renamed = EPICS.map((e) => (e.project === 'Kehikot' ? { ...e, project: 'Kehikot app' } : e))
+    const territory = intoProjects(renamed, { epic: null, project: 'Kehikot app', projectId: ID })
+    expect(territory.hereId).toBe(ID)
+    expect(at(placeShown(territory, { at: 'epics', project: { name: 'Kehikot', id: ID } }))).toBe('Kehikot app')
+  })
+
+  test('an id that is not the open project’s falls back to the name', () => {
+    const territory = intoProjects(EPICS, { epic: null, project: 'Kehikot', projectId: 'aaaaaaaa-0000-4000-8000-000000000000' })
+    expect(at(placeShown(territory, { at: 'epics', project: { name: 'Courier', id: ID } }))).toBe('Courier')
+    expect(at(placeShown(territory, { at: 'epics', project: { name: 'Gone', id: ID } }))).toBe('projects')
+  })
+
+  test('without an id — an older host, or a place kept before ids — the name decides, as before', () => {
+    const territory = intoProjects(EPICS, { epic: null, project: 'Kehikot' })
+    expect(territory.hereId).toBeNull()
+    expect(at(placeShown(territory, { at: 'epics', project: { name: 'Courier' } }))).toBe('Courier')
+    const withId = intoProjects(EPICS, { epic: null, project: 'Kehikot', projectId: ID })
+    expect(at(placeShown(withId, { at: 'epics', project: { name: 'Kehikot' } }))).toBe('Kehikot')
+  })
+})

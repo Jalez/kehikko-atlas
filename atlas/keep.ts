@@ -1,3 +1,5 @@
+import { PROJECT_ID } from 'kehikot-module-protocol'
+
 import type { Chosen } from './chooser.ts'
 
 /**
@@ -44,6 +46,17 @@ import type { Chosen } from './chooser.ts'
  * A project name is `string | null` for the same reason it is there: `null` is
  * the group of epics the host filed under nothing, an actual project, not a
  * missing one. It survives the round trip as JSON `null`, which JSON can say.
+ *
+ * ## By id when there is one
+ *
+ * A name changes when the project folder is renamed. So when the drilled-into
+ * project is the one the host says the reader is in, and the host gave it a
+ * permanent id (`context.projectId`, protocol 2.1.0), the id is kept too, as
+ * `i`, and `placeShown` finds the project by it before trying the name. A
+ * project the host has not given an id, or one the reader is not standing in
+ * (the epics answer names projects, not ids), is remembered by name as before.
+ * An `i` that is not an id is ignored and the name is used; the version is
+ * unchanged, because an older Atlas reading `i` ignores it the same way.
  */
 
 /** The shape written today. Bumped when the fields change, never reused. */
@@ -66,10 +79,12 @@ const VERSION = 1
 export function writing(chosen: Chosen | null): string {
   if (chosen === null) return JSON.stringify({ v: VERSION, at: 'unset' })
   if (chosen.at === 'projects') return JSON.stringify({ v: VERSION, at: 'projects' })
+  const id = chosen.project.id
   return JSON.stringify({
     v: VERSION,
     at: 'epics',
     p: chosen.project.name === null ? null : chosen.project.name.slice(0, 200),
+    ...(typeof id === 'string' && PROJECT_ID.test(id) ? { i: id } : {}),
   })
 }
 
@@ -108,8 +123,9 @@ export function reading(state: string | null | undefined): Chosen | null | undef
   if (held.at === 'projects') return { at: 'projects' }
   if (held.at === 'epics') {
     const name = held.p
-    if (name === null) return { at: 'epics', project: { name: null } }
-    if (typeof name === 'string') return { at: 'epics', project: { name: name.slice(0, 200) } }
+    const id = typeof held.i === 'string' && PROJECT_ID.test(held.i) ? { id: held.i } : {}
+    if (name === null) return { at: 'epics', project: { name: null, ...id } }
+    if (typeof name === 'string') return { at: 'epics', project: { name: name.slice(0, 200), ...id } }
     /* An `epics` place with no usable project name is not a place. Falling back
        to the project list rather than to the unfiled group, because guessing
        would put the reader somewhere they never chose. */

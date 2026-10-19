@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { clampHeight, type ModuleContext } from 'kehikot-module-protocol'
+import { clampHeight, projectKey, type ModuleContext } from 'kehikot-module-protocol'
 import { HostRefused } from 'kehikot-module-protocol/client'
 import { useHost, type KeptCodec, type Where } from 'kehikot-module-protocol/client/react'
 import { type Territory, intoProjects } from '../atlas/grouping.ts'
@@ -43,6 +43,25 @@ const KEPT: KeptCodec<Kept> = {
     return chosen === undefined ? null : { chosen }
   },
   write: (kept) => writing(kept.chosen),
+}
+
+/** The open project's permanent id (protocol 2.1.0), or null when the host sent none. */
+function idOf(context: ModuleContext | null): string | null {
+  const key = projectKey(context)
+  return key?.by === 'id' ? key.key : null
+}
+
+/**
+ * The place to keep, naming the drilled-into project by its id as well when it
+ * is the project the host says the reader is in and the host gave it one. See
+ * `atlas/keep.ts`: a renamed project is then still found.
+ */
+export function withId(chosen: Chosen | null, context: ModuleContext | null): Chosen | null {
+  if (chosen === null || chosen.at !== 'epics') return chosen
+  const id = idOf(context)
+  const { id: _old, ...picked } = chosen.project
+  if (id === null || picked.name === null || picked.name !== (context?.project ?? null)) return { at: 'epics', project: picked }
+  return { at: 'epics', project: { ...picked, id } }
 }
 
 /** What a `goto` is told. Always the same, and still owed: a host waits on the answer. */
@@ -232,6 +251,7 @@ export function useAtlas(): Atlas {
     return intoProjects(situation.reading.epics, {
       epic: context?.epic ?? null,
       project: context?.project ?? null,
+      projectId: idOf(context),
     })
   }, [situation, context])
 
@@ -279,8 +299,8 @@ export function useAtlas(): Atlas {
   const keep = host.remember
   const remember = useMemo(() => {
     if (where !== 'hosted' || !KEEP_STATE) return null
-    return (chosen: Chosen | null) => keep({ chosen })
-  }, [where, keep])
+    return (chosen: Chosen | null) => keep({ chosen: withId(chosen, context) })
+  }, [where, keep, context])
 
   /**
    * Whether asking the list question again is worth offering.

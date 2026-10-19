@@ -92,3 +92,22 @@ describe('what is written', () => {
     expect(writing({ at: 'projects' }).length).toBeLessThan(64)
   })
 })
+
+describe('the project id (protocol 2.1.0)', () => {
+  const ID = '3f2b8c1e-0d4a-4e5b-9c6d-7e8f9a0b1c2d'
+
+  test('a project kept with its id survives the round trip with it', () => {
+    const there = { at: 'epics', project: { name: 'Kehikot', id: ID } } as const
+    expect(JSON.parse(writing(there))).toMatchObject({ p: 'Kehikot', i: ID })
+    expect(reading(writing(there))).toEqual(there)
+  })
+
+  test('a place kept before ids reads by name, with no id', () => {
+    expect(reading(JSON.stringify({ v: 1, at: 'epics', p: 'Community portal' }))).toEqual({ at: 'epics', project: { name: 'Community portal' } })
+  })
+
+  test('an i that is not an id is ignored, and the name is used', () => {
+    expect(reading(JSON.stringify({ v: 1, at: 'epics', p: 'Kehikot', i: '../x' }))).toEqual({ at: 'epics', project: { name: 'Kehikot' } })
+    expect(JSON.parse(writing({ at: 'epics', project: { name: 'Kehikot', id: 'NOT AN ID' } })).i).toBeUndefined()
+  })
+})
