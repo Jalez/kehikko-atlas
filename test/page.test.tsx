@@ -985,6 +985,25 @@ describe('the short form, in a pane with no height', () => {
     expect(chip('Off means off')).toBeUndefined()
   })
 
+  test('the project the reader is in is kept by its id too, when the host gave one', async () => {
+    const standing = { epic: null, project: 'Courier', theme: 'light', projectId: '3f2b8c1e-0d4a-4e5b-9c6d-7e8f9a0b1c2d' }
+    const { sent } = await mappedPage(standing)
+    act(() => (chip('Kehikot') as HTMLElement).click())
+    act(() => (chip('Courier') as HTMLElement).click())
+    const kept = sent.filter((m) => m.type === MESSAGE.REQUEST && m.method === 'state.set').map((m) => JSON.parse(m.params.state))
+    /* Kehikot is not where the host says the reader is, so it has only its name; Courier has its id. */
+    expect(kept[0]).toEqual({ v: 1, at: 'epics', p: 'Kehikot' })
+    expect(kept[1]).toEqual({ v: 1, at: 'epics', p: 'Courier', i: standing.projectId })
+  })
+
+  test('a place kept by id opens in that project after it was renamed', async () => {
+    /* Kept as "Old name" with the id; the host now calls the project with that id "Courier". */
+    const standing = { epic: null, project: 'Courier', theme: 'light', projectId: '3f2b8c1e-0d4a-4e5b-9c6d-7e8f9a0b1c2d' }
+    await mappedPage(standing, JSON.stringify({ v: 1, at: 'epics', p: 'Old name', i: standing.projectId }))
+    await waitFor(() => expect(chip('Courier')?.getAttribute('aria-pressed')).toBe('true'))
+    expect(chip('The lone one')).toBeDefined()
+  })
+
   test('with nobody to ask, there is no strip and no dead control', async () => {
     unframe()
     render(<App />)
