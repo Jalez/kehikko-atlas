@@ -1,8 +1,10 @@
 import { MANIFEST_KIND, METHODS, PROTOCOL, manifestSchema, own } from 'kehikot-module-protocol'
 import { GET_EPIC, GOTO, KEEP_STATE, LIST_EPICS } from './atlas/methods.ts'
+import pkg from './package.json'
 
 export const ID = 'kehikot.atlas'
-export const VERSION = '1.0.0'
+/** The module's version: package.json's, the one place it is written. A release is tagged with it. */
+export const VERSION: string = pkg.version
 
 /**
  * The port this app takes when nothing else has it, said once: `run.sh`, the
