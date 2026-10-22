@@ -1,6 +1,6 @@
 {
   "name": "kehikot-atlas",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "private": true,
   "type": "module",
   "description": "A map of the territory: which projects exist, and which epics belong to each. Its own program — a page, a manifest and a server — which a Kehikot host may frame, and which runs and says something honest when nothing does.",
