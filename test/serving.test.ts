@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
-import { answersAt } from '../doors.ts'
+import { hostFence } from 'kehikot-module-protocol/run'
 import { ID, PREFERRED_PORT } from '../manifest.ts'
 
 /**
@@ -40,17 +40,19 @@ describe('the registration', () => {
   })
 })
 
+/* The built page's server is the protocol's `run`, which refuses another name before any door
+   (`hostFence`); this holds it to the names Atlas has always answered under, and no others. */
 describe('the names the built page’s server answers under', () => {
   test('this machine, with or without a port', () => {
     for (const host of ['127.0.0.1:7830', '127.0.0.1', 'localhost:7830', 'LOCALHOST:7830', 'atlas.localhost:7830', '[::1]:7830']) {
-      expect(answersAt(host)).toBe(true)
+      expect(hostFence(host)).toBe(true)
     }
   })
 
   test('nothing else: another name pointed at this machine, an address on a network, or none', () => {
     for (const host of ['example.com', 'example.com:7830', 'localhost.example.com', '127.0.0.1.example.com:7830', 'notlocalhost', '192.168.1.20:7830', '0.0.0.0:7830', '', 'a b']) {
-      expect(answersAt(host)).toBe(false)
+      expect(hostFence(host)).toBe(false)
     }
-    expect(answersAt(null)).toBe(false)
+    expect(hostFence(null)).toBe(false)
   })
 })

@@ -3,20 +3,28 @@
 # Start Atlas. No arguments. `PORT` from the environment, or 7830. It registers
 # itself with the address it ends up answering at.
 #
-# ## One port, and no build
+# ## One port, and the built page when it is this checkout's
 #
 # A module is one origin or it is nothing. The protocol refuses a manifest whose
 # `entry` points anywhere but the origin that served the manifest, so the page,
 # the manifest and the health check all answer here — see the `doors` plugin in
-# `vite.config.ts`, which is how the two that are not the page get served.
+# `vite.config.ts`, or the protocol's `run` in `serve.ts`.
 #
-# There used to be a `dist/`: the page was built once, a small server handed it
-# off disk, and the build was skipped when `dist` already existed. That is the
-# shape of a deployment and this program is not deployed — it runs on the
-# machine of the person editing it. What the shape actually bought was a stale
-# page served with a 200, which is every symptom of a working program and none
-# of the changes, and it cost an afternoon before anybody suspected the build
-# rather than the code.
+# There is a build: `bun run build` compiles the page into `dist/` and stamps it
+# with the commit (`dist/.kehikot-built`), and `serve.ts` serves it on the same
+# doors and the same port with a fraction of the memory a Vite dev server holds.
+# A host builds an installed copy when it installs or updates it, at the tag; a
+# start never builds.
+#
+# There used to be a `dist/` with no stamp: the page was built once, a small
+# server handed it off disk, and the build was skipped when `dist` already
+# existed. What that bought was a stale page served with a 200, which is every
+# symptom of a working program and none of the changes, and it cost an
+# afternoon before anybody suspected the build rather than the code. So the
+# built page is served only when its stamp is the commit checked out here,
+# checked at the bottom of this file; a checkout somebody edits has no stamp, or
+# one of an older commit, and gets Vite. `serve.ts` refuses a stale build itself
+# too (a 503 that says why).
 #
 # `exec`, and in the foreground, because whoever started this holds the process
 # that serves. A script that forked and returned would leave them with a pid
@@ -52,4 +60,17 @@ fi
 # cleanly rather than making a second copy; anything else in the way is a loud
 # move to the next free port. Either way the port actually bound is written to
 # this module's registration, which is how a host finds it.
+# The built page, when its stamp is this checkout's HEAD. Read here, in the
+# shell, so choosing costs a `git rev-parse` and not a process.
+BUILT=
+if [ -f dist/.kehikot-built ] && [ -f dist/index.html ]; then
+  read -r BUILT < dist/.kehikot-built || true
+fi
+if [ -n "$BUILT" ] && [ "$BUILT" = "$(git rev-parse HEAD 2>/dev/null)" ]; then
+  exec bun run serve.ts
+fi
+if [ -n "$BUILT" ]; then
+  echo "atlas: dist/ is a build of $(printf %.7s "$BUILT"), not of this checkout, so Vite serves the page. \`bun run build\` would make it current." >&2
+fi
+
 exec bunx vite $VITE_FORCE

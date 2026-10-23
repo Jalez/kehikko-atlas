@@ -87,7 +87,8 @@ export default defineConfig({
      *
      * This is not a development-only concern. A built page uses module scripts
      * too, so whatever serves this app in any arrangement has to answer with
-     * the same permission. It costs nothing to give: this origin serves a
+     * the same permission: `cors: true` on the protocol's `run` in `serve.ts`.
+     * It costs nothing to give: this origin serves a
      * public page, a manifest and a health check, holds no credential, and has
      * no write path for a header to protect.
      */
