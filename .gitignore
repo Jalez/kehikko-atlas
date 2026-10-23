@@ -8,9 +8,10 @@
 # every checkout afterwards failed with ELOOP.
 node_modules
 
-# The build. Nothing serves it any more — `run.sh` runs Vite — and a checked-in
-# copy would be a second answer to "what does this page say", which disagrees
-# with the first the moment somebody edits `page/`.
+# The build (`bun run build`). Served only when its stamp is the commit checked
+# out (`run.sh`, `serve.ts`); a checked-in copy would be a second answer to
+# "what does this page say", which disagrees with the first the moment somebody
+# edits `page/`.
 dist
 
 # Written by build.ts for the length of a build, and removed by it. The page is

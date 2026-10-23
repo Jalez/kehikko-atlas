@@ -8,7 +8,7 @@ export const VERSION: string = pkg.version
 
 /**
  * The port this app takes when nothing else has it, said once: `run.sh`, the
- * built page's `server.ts` and `register.ts` all read it from here. `PORT` from
+ * built page's `serve.ts` and `register.ts` all read it from here. `PORT` from
  * the environment wins over it, because whoever starts a module chose where it
  * answers; and when the port is taken by something else the protocol's `claim`
  * moves to the next free one and the registration is rewritten to match.
