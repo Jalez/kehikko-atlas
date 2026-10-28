@@ -1,6 +1,6 @@
 {
   "name": "kehikot-atlas",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "private": true,
   "type": "module",
   "description": "A map of the territory: which projects exist, and which epics belong to each. Its own program — a page, a manifest and a server — which a Kehikot host may frame, and which runs and says something honest when nothing does.",
@@ -21,7 +21,7 @@
     "lucide-react": "^0.544.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
-    "kehikot-module-protocol": "git+ssh://git@github.com/Jalez/kehikko-protocol.git#v2.18.0",
+    "kehikot-module-protocol": "git+ssh://git@github.com/Jalez/kehikko-protocol.git#v2.29.0",
     "tailwind-merge": "^3.6.0",
     "zod": "^3.25.76"
   },
