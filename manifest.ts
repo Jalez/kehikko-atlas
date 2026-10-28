@@ -64,23 +64,16 @@ export const PREFERRED_PORT = 7830
  *   credential and has no code path that opens a socket to anything but the
  *   server that served it.
  *
- * ## The mode, and why its scope is `epic` when the page is about all of them
+ * ## The mode, and why its scope is `machine`
  *
- * One mode, and it looks like it should be `global`: Atlas draws every project
- * and every epic, and `global` is the scope for a page over the whole workspace.
- *
- * It is `epic`, which means "follows the reader — told which epic is open, and
- * told again on every switch". The difference is the marker. A `global` mode is
- * never sent `kehikot.context`, so a map with `global` scope could show
- * everything and never show WHERE YOU ARE, and would go on not showing it as
- * the reader moved around. Being told costs one message per switch and is the
- * difference between a map and a map with a pin in it.
- *
- * The scope's spelling changed under this app while it was being written, from
- * `journey` to `epic`, along with the methods and the context field. The value
- * is a literal in somebody else's enum rather than a string this app chooses, so
- * unlike the method names in `atlas/methods.ts` it cannot be resolved — it is
- * written out, and it is the one place a further rename would need an edit here.
+ * One mode, at `machine` (protocol 2.29.0, "This computer"): Atlas draws every
+ * project on this computer and every epic in each, read through the host's
+ * `epics.list`, whatever is open. It still reads the context it is sent on every
+ * switch — that is where the marker for WHERE YOU ARE comes from — and a host
+ * sends the context to every container whatever its scope. Before 2.29.0 the
+ * word was `epic`, because `global` was meant to be told nothing; that was
+ * never so, and the scope now says what the page is about rather than how it
+ * is told.
  */
 
 /**
@@ -144,7 +137,10 @@ export const MANIFEST = manifestSchema.parse({
     'canvas, so do it deliberately: every other module will follow you to it.',
   entry: '/app',
   health: '/healthz',
-  modes: [{ id: 'atlas', label: 'Atlas', scope: 'epic' }],
+  /* What its content belongs to (protocol 2.29.0): one mode per scope, the default first. */
+  modes: [
+    { id: 'atlas', label: 'Atlas', scope: 'machine', scopeSays: 'every project on this computer and the epics in each, with where you are marked' },
+  ],
   extensions: { emits: [], consumes: [] },
   /* Why this module has nothing to narrow by the parts of an epic. */
   partless: "A map of projects and their epics; it sits above any one epic's parts.",
